@@ -1,0 +1,49 @@
+specVersion: v0.1.0
+package:
+  name: bitcoin_ordinals
+  version: v0.1.0
+
+imports:
+  sql: https://github.com/streamingfast/substreams-sink-sql/releases/download/protodefs-v1.0.2/substreams-sink-sql-protodefs-v1.0.2.spkg
+  database_change: https://github.com/streamingfast/substreams-sink-database-changes/releases/download/v1.2.1/substreams-database-change-v1.2.1.spkg
+
+protobuf:
+  files:
+    - ordinals.proto
+    - sf.bitcoin.type.v1.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+  - name: map_transaction
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.bitcoin.type.v1.Block
+    output:
+      type: proto:sf.bitcoin.type.v1.Transaction
+
+  - name: store_total_supply
+    kind: store
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - source: sf.bitcoin.type.v1.Block
+    doc: |
+      `BigInt` store accumulator for the total number of sats in existence.
+
+  - name: map_ordinals
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.bitcoin.type.v1.Block
+      - store: store_total_supply
+    output:
+      type: proto:ordinals.v1.Block
+
+network: mainnet
