@@ -28,25 +28,11 @@ pub mod sf {
             }
         }
         pub mod sink {
-            pub mod database {
-                // @@protoc_insertion_point(attribute:sf.substreams.sink.database.v1)
-                pub mod v1 {
-                    include!("sf.substreams.sink.database.v1.rs");
-                    // @@protoc_insertion_point(sf.substreams.sink.database.v1)
-                }
-            }
             pub mod service {
                 // @@protoc_insertion_point(attribute:sf.substreams.sink.service.v1)
                 pub mod v1 {
                     include!("sf.substreams.sink.service.v1.rs");
                     // @@protoc_insertion_point(sf.substreams.sink.service.v1)
-                }
-            }
-            pub mod sql {
-                // @@protoc_insertion_point(attribute:sf.substreams.sink.sql.v1)
-                pub mod v1 {
-                    include!("sf.substreams.sink.sql.v1.rs");
-                    // @@protoc_insertion_point(sf.substreams.sink.sql.v1)
                 }
             }
         }

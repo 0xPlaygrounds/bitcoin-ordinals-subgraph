@@ -1,6 +1,4 @@
 // @generated
-// import "google/protobuf/timestamp.proto";
-
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Block {

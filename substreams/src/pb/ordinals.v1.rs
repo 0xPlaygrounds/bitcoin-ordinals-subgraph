@@ -24,16 +24,16 @@ pub struct Transaction {
     /// Fee in sats
     /// int64 fee = 4;
     /// Ordinals assignment (only present for coinbase transaction)
-    #[prost(message, optional, tag="5")]
+    #[prost(message, optional, tag="4")]
     pub assignment: ::core::option::Option<OrdinalsBlockAssignment>,
     /// Input UTXOs
-    #[prost(string, repeated, tag="6")]
+    #[prost(string, repeated, tag="5")]
     pub input_utxos: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Note: The ordinals blocks here are relative and refer to the
     /// ordinals assigned to the input UTXOs
     /// E.g.: The Nth to Mth ordinals of the input utxos should
     /// be assigned to some output utxo
-    #[prost(message, repeated, tag="7")]
+    #[prost(message, repeated, tag="6")]
     pub relative_assignments: ::prost::alloc::vec::Vec<OrdinalsBlockAssignment>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
