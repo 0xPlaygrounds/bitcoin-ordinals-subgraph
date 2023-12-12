@@ -3,7 +3,7 @@ type OrdinalsAssignment @entity {
   # {txid}:{output_idx}:{idx}
   id: ID!
   # Block height
-  block: BigInt!
+  # block: BigInt!
   # First ordinal of the block assignment
   start: BigInt!
   # Number of ordinals in the block assignment

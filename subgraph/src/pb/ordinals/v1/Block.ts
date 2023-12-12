@@ -9,14 +9,23 @@ import { Transaction } from "./Transaction";
 export class Block {
   static encode(message: Block, writer: Writer): void {
     writer.uint32(8);
-    writer.uint64(message.timestamp);
+    writer.int64(message.timestamp);
 
     writer.uint32(16);
-    writer.uint64(message.block);
+    writer.int64(message.number);
+
+    writer.uint32(24);
+    writer.int64(message.minerReward);
+
+    writer.uint32(32);
+    writer.int64(message.subsidy);
+
+    writer.uint32(40);
+    writer.int64(message.fees);
 
     const txs = message.txs;
     for (let i: i32 = 0; i < txs.length; ++i) {
-      writer.uint32(26);
+      writer.uint32(50);
       writer.fork();
       Transaction.encode(txs[i], writer);
       writer.ldelim();
@@ -31,14 +40,26 @@ export class Block {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.timestamp = reader.uint64();
+          message.timestamp = reader.int64();
           break;
 
         case 2:
-          message.block = reader.uint64();
+          message.number = reader.int64();
           break;
 
         case 3:
+          message.minerReward = reader.int64();
+          break;
+
+        case 4:
+          message.subsidy = reader.int64();
+          break;
+
+        case 5:
+          message.fees = reader.int64();
+          break;
+
+        case 6:
           message.txs.push(Transaction.decode(reader, reader.uint32()));
           break;
 
@@ -51,17 +72,26 @@ export class Block {
     return message;
   }
 
-  timestamp: u64;
-  block: u64;
+  timestamp: i64;
+  number: i64;
+  minerReward: i64;
+  subsidy: i64;
+  fees: i64;
   txs: Array<Transaction>;
 
   constructor(
-    timestamp: u64 = 0,
-    block: u64 = 0,
+    timestamp: i64 = 0,
+    number: i64 = 0,
+    minerReward: i64 = 0,
+    subsidy: i64 = 0,
+    fees: i64 = 0,
     txs: Array<Transaction> = []
   ) {
     this.timestamp = timestamp;
-    this.block = block;
+    this.number = number;
+    this.minerReward = minerReward;
+    this.subsidy = subsidy;
+    this.fees = fees;
     this.txs = txs;
   }
 }

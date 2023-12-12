@@ -31,11 +31,11 @@ modules:
   - name: store_total_supply
     kind: store
     updatePolicy: add
-    valueType: bigint
+    valueType: int64
     inputs:
       - source: sf.bitcoin.type.v1.Block
     doc: |
-      `BigInt` store accumulator for the total number of sats in existence.
+      `int` store accumulator for the total number of sats in existence.
 
   - name: map_ordinals
     kind: map

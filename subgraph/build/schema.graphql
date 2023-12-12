@@ -3,11 +3,11 @@ type OrdinalsAssignment @entity {
   # {txid}:{output_idx}:{idx}
   id: ID!
   # Block height
-  block: BigInt!
+  # block: BigInt!
   # First ordinal of the block assignment
   start: BigInt!
-  # Last ordinal of the block assignment
-  end: BigInt!
+  # Number of ordinals in the block assignment
+  size: BigInt!
   # The index of the block assignment of the UTXO (starts at 0)
   # E.g.: An idx of 2 signifies that it is the 3rd block assignment 
   # of ordinals for the utxo
@@ -19,8 +19,17 @@ type OrdinalsAssignment @entity {
 type Utxo @entity {
   id: ID!
   txid: ID!
+  block: Block!
+  sats: BigInt!
   ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
   unspent: Boolean!
+  # spent_in: Block
+}
+
+type Block @entity {
+  id: ID!
+  # input_utxos: [Utxo!]! @derivedFrom(field: "spent_in")
+  output_utxos: [Utxo!]! @derivedFrom(field: "block")
 }
 
 # type Transaction {

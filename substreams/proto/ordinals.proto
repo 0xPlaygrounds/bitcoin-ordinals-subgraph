@@ -2,46 +2,43 @@ syntax = "proto3";
 
 package ordinals.v1;
 
-// Represents a block of ordinals assigned to a given UTXO
-message Ordinals {
-    string start = 1;
-    string size = 2;
-}
-
-message OrdinalsAssignment {
+// Represents a continuous block of ordinals assigned to a given UTXO
+message OrdinalsBlockAssignment {
     string utxo = 1;
-    Ordinals ordinals = 2;
-}
-
-message OrdinalsTransfer {
-    string input_utxo = 1;
-    string output_utxo = 2;
-    // Note: The ordinals index here are relative
-    // E.g.: The Nth to Mth ordinals of the input utxo should
-    // be transferred to the output utxo
-    Ordinals ordinals = 3;
-}
-
-message OrdinalsTransfers {
-    repeated string input_utxos = 1;
-    // Note: The ordinals index here are relative
-    // E.g.: The Nth to Mth ordinals of the input utxo should
-    // be transferred to the output utxo
-    repeated OrdinalsAssignment relative_assignments = 2;
+    int64 start = 2;
+    int64 size = 3;
 }
 
 message Transaction {
     string txid = 1;
-    // Amount transferred in sats
-    string amount = 2;
     // Output number
-    uint64 idx = 3;
-    repeated OrdinalsAssignment assigments = 4;
-    OrdinalsTransfers transfers = 5;
+    int64 idx = 2;
+    // Amount transferred in sats
+    int64 amount = 3;
+    // Fee in sats
+    // int64 fee = 4;
+    // Ordinals assignment (only present for coinbase transaction)
+    optional OrdinalsBlockAssignment assignment = 4;
+    // Input UTXOs
+    repeated string input_utxos = 5;
+    // Note: The ordinals blocks here are relative and refer to the
+    // ordinals assigned to the input UTXOs
+    // E.g.: The Nth to Mth ordinals of the input utxos should
+    // be assigned to some output utxo
+    repeated OrdinalsBlockAssignment relative_assignments = 6;
 }
 
 message Block {
-    uint64 timestamp = 1;
-    uint64 block = 2;
-    repeated Transaction txs = 3;
+    // Block timestamp
+    int64 timestamp = 1;
+    // Block number
+    int64 number = 2;
+    // Total miner reward (in sats)
+    int64 miner_reward = 3;
+    // Block subsidy (in sats)
+    int64 subsidy = 4;
+    // Miner fees (in sats)
+    int64 fees = 5;
+    // Block transactions
+    repeated Transaction txs = 6;
 }

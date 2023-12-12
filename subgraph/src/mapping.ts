@@ -3,9 +3,10 @@ import { Block } from "./pb/ordinals/v1/Block"
 import { Ordinals } from './pb/ordinals/v1/Ordinals';
 import { OrdinalsAssignment as ProtoOrdinalsAssignment } from './pb/ordinals/v1/OrdinalsAssignment';
 import { OrdinalsTransfers as ProtoOrdinalsTransfers } from './pb/ordinals/v1/OrdinalsTransfers';
-import { OrdinalsAssignment, Utxo } from '../generated/schema';
+import { Block as BlockEntity, OrdinalsAssignment, Utxo } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction } from './pb/ordinals/v1/Transaction';
+import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
 
 
 // Implementing my own forEach because AssemblyScript can't figure out how to support
@@ -39,8 +40,9 @@ function popNOrdinals(
   utxo_id: string,
   idx: i32,
   input_ordinals: OrdinalsAssignment,
-  rel_output_ordinals: Ordinals): OrdinalsAssignment {
-  let num_assigned = (BigInt.fromString(rel_output_ordinals.size) <= input_ordinals.size ? BigInt.fromString(rel_output_ordinals.size) : input_ordinals.size)
+  rel_output_ordinals: OrdinalsBlockAssignment
+): OrdinalsAssignment {
+  let num_assigned = (BigInt.fromI64(rel_output_ordinals.size) <= input_ordinals.size ? BigInt.fromI64(rel_output_ordinals.size) : input_ordinals.size)
   
   // Create new block assignment
   let ord = new OrdinalsAssignment(utxo_id + idx.toString())
@@ -55,110 +57,153 @@ function popNOrdinals(
 
   // Edit relative input block assignment
   // TODO: Make this less convoluted
-  rel_output_ordinals.size = BigInt.fromString(rel_output_ordinals.size)
+  rel_output_ordinals.size = BigInt.fromI64(rel_output_ordinals.size)
     .minus(num_assigned)
-    .toString()
+    .toI64()
 
   return ord
 }
 
-function assignOrdinals(
-  input_utxos_ordinals: Array<OrdinalsAssignment>, 
-  rel_output_utxos_ordinals: Array<ProtoOrdinalsAssignment>,
-): Array<OrdinalsAssignment> {
-  let rev_input_ordinals = input_utxos_ordinals.reverse()
-  let utxos_ordinals = new Array<OrdinalsAssignment>()
+// function assignOrdinals(
+//   input_utxos_ordinals: Array<OrdinalsAssignment>, 
+//   rel_output_utxos_ordinals: Array<ProtoOrdinalsAssignment>,
+// ): Array<OrdinalsAssignment> {
+//   let rev_input_ordinals = input_utxos_ordinals.reverse()
+//   let utxos_ordinals = new Array<OrdinalsAssignment>()
     
-  let rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
-  let input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
-  let utxo_id = rel_output_ordinals.utxo
-  let utxo_ordinals_indx = 0
+//   let rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
+//   let input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
+//   let utxo_id = rel_output_ordinals.utxo
+//   let utxo_ordinals_indx = 0
   
-  while (rel_output_utxos_ordinals.length > 0) {
-    if (utxo_id != rel_output_ordinals.utxo) {
-      utxo_ordinals_indx = 0
-      // sats_to_go = numOrdinals(rel_output_ordinals)
-      utxo_id = rel_output_ordinals.utxo
-    }
+//   while (rel_output_utxos_ordinals.length > 0) {
+//     if (utxo_id != rel_output_ordinals.utxo) {
+//       utxo_ordinals_indx = 0
+//       // sats_to_go = numOrdinals(rel_output_ordinals)
+//       utxo_id = rel_output_ordinals.utxo
+//     }
 
-    let output_ordinals = popNOrdinals(utxo_id, utxo_ordinals_indx, input_ordinals, <Ordinals>rel_output_ordinals.ordinals)
-    utxo_ordinals_indx = utxo_ordinals_indx + 1
+//     let output_ordinals = popNOrdinals(
+//       utxo_id,
+//       utxo_ordinals_indx,
+//       input_ordinals, 
+//       <OrdinalsBlockAssignment>rel_output_ordinals.ordinals
+// )
+//     utxo_ordinals_indx = utxo_ordinals_indx + 1
 
-    if (input_ordinals.size == BigInt.zero()) {
-      input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
-    }
-    if ((<Ordinals>rel_output_ordinals.ordinals).size == BigInt.zero().toString()) {
-      rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
-      utxos_ordinals.push(output_ordinals)
-    }
-  }
+//     if (input_ordinals.size == BigInt.zero()) {
+//       input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
+//     }
+//     if ((<Ordinals>rel_output_ordinals.ordinals).size == BigInt.zero().toString()) {
+//       rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
+//       utxos_ordinals.push(output_ordinals)
+//     }
+//   }
   
-  return utxos_ordinals
-}
+//   return utxos_ordinals
+// }
 
 export function handleBlock(blockBytes: Uint8Array): void {
   const block = Protobuf.decode<Block>(blockBytes, Block.decode);
 
-  forEach(block, block.txs, (block, tx, _) => {
-    // Handle new ordinals assignments
-    forEach2(block, tx, tx.assigments, (block, tx, assignment, idx) => {
-      let utxo = new Utxo(assignment.utxo);
-      utxo.txid = tx.txid;
-      utxo.unspent = true;
-      utxo.save();
+  // Create block
+  let block_ = new BlockEntity(block.number.toString())
+  block_.save()
 
-      let ord_assignment = new OrdinalsAssignment(utxo.id + ":0");
-      ord_assignment.block = BigInt.fromU64(block.block);
-      ord_assignment.start = BigInt.fromString((<Ordinals>assignment.ordinals).start);
-      ord_assignment.size = BigInt.fromString((<Ordinals>assignment.ordinals).size);
-      ord_assignment.idx = idx
-      ord_assignment.utxo = utxo.id
-      ord_assignment.save()
+  let coinbase_ordinals = new Array<OrdinalsAssignment>(0);
+  // Handle coinbase ordinals assignments
+  let coinbase_tx = block.txs[0]
+  let coinbase_utxo = new Utxo((<OrdinalsBlockAssignment>coinbase_tx.assignment).utxo);
+  coinbase_utxo.txid = coinbase_tx.txid;
+  coinbase_utxo.unspent = true;
+  coinbase_utxo.save();
+
+  let ord_assignment = new OrdinalsAssignment(coinbase_utxo.id + ":0");
+  // ord_assignment.block = BigInt.fromI64(block.number);
+  ord_assignment.start = BigInt.fromI64((<OrdinalsBlockAssignment>coinbase_tx.assignment).start);
+  ord_assignment.size = BigInt.fromI64((<OrdinalsBlockAssignment>coinbase_tx.assignment).size);
+  ord_assignment.idx = 0
+  ord_assignment.utxo = coinbase_utxo.id
+  ord_assignment.save()
+  coinbase_ordinals.push(ord_assignment)
+
+  // Handle ordinals transfers for non-coinbase transactions
+  for (let i = 1; i < block.txs.length; ++i) {
+    let tx = block.txs[i];
+
+    // Collect ordinals of all input UTXOs
+    let input_ordinals = new Array<OrdinalsAssignment>(0);
+    forEach(input_ordinals, tx.inputUtxos, (input_ordinals, input_utxo, _) => {
+      let utxo = Utxo.load(input_utxo)
+      if (utxo != null) {
+        // Load the input UTXO's ordinals and make sure they are ordered
+        let utxo_ordinals = utxo.ordinals.load()
+        utxo_ordinals.sort((a, b) => a.idx - b.idx)
+
+        input_ordinals = input_ordinals.concat(utxo_ordinals)
+
+        // Mark the UTXO as spent
+        utxo.unspent = false
+        utxo.save()
+      }
     })
 
-    // Handle ordinals transfers
-    let input_ordinals = new Array<OrdinalsAssignment>(0);
-    let transfers = tx.transfers;
-    if (transfers) {
-      // Collect ordinals of all input UTXOs
-      forEach(input_ordinals, transfers.inputUtxos, (input_ordinals, input_utxo, _) => {
-        let utxo = Utxo.load(input_utxo);
-        if (utxo != null) {
-          input_ordinals = input_ordinals.concat(utxo.ordinals.load());
-          utxo.unspent = false;
-          utxo.save();
-        }
-      })
-  
-      // "Distribute" ordinals to all output UTXOs (FIFO)
-      let new_block_assignments = assignOrdinals(
-        input_ordinals,
-        transfers.relativeAssignments,
-      );
+    // Reverse order for FIFO
+    input_ordinals.reverse()
 
-      let utxos = new Map<string, Utxo>();
+    // let output_ordinals = new Array<OrdinalsAssignment>(0);
+    let current_input_ordinals = <OrdinalsAssignment>input_ordinals.pop()
+    
+    for (let j = 0; j < tx.relativeAssignments.length; ++j) {      
+      let rel_assignment = tx.relativeAssignments[j]
+      let counter = 0
 
-      forEach3(block, tx, utxos, new_block_assignments, (block, tx, utxos, block_assignment, _) => {
-        // update or create UTXO
-        let utxo = utxos.has(block_assignment.utxo) ? utxos.get(block_assignment.utxo) : null
-        if (!utxo) {
-          utxo = new Utxo(block_assignment.utxo)
-        }
-
-        utxo.block = block.block.toString()
+      // Create UTXO
+      let utxo = Utxo.load(rel_assignment.utxo)
+      if (utxo == null) {
+        utxo = new Utxo(rel_assignment.utxo)
         utxo.txid = tx.txid
-        utxo.sats = BigInt.fromString(tx.amount)
+        utxo.block = block.number.toString()
+        utxo.sats = BigInt.zero() // TODO:
         utxo.unspent = true
-
-        // Edit and save block assignment
-        block_assignment.block = BigInt.fromString(block.block)
-        block_assignment.save()
-      })
-
-      // Save UTXOs
-      utxos.forEach((utxo, _, __) => {
         utxo.save()
-      })
+      }
+
+
+      while (rel_assignment.size > 0) {
+        if (current_input_ordinals.size == BigInt.zero()) {
+          // Safe since there should always be more input ordinals than
+          // assigned ordinals in a transaction
+          current_input_ordinals = <OrdinalsAssignment>input_ordinals.pop()
+        }
+        
+        let assignment = popNOrdinals(
+          rel_assignment.utxo,
+          counter,
+          current_input_ordinals,
+          rel_assignment
+        )
+
+        assignment.save()
+      }
     }
-  })
+    
+    // Assign remaining input ordinals to coinbase
+    if (current_input_ordinals.size > BigInt.zero()) {
+      // Add back last input if not completely assigned 
+      input_ordinals.push(current_input_ordinals)
+    }
+    while (input_ordinals.length > 0) {
+      let current_input_ordinals = <OrdinalsAssignment>input_ordinals.pop()
+
+      let assignment = new OrdinalsAssignment(coinbase_utxo.id + ":" + coinbase_ordinals.length.toString())
+      assignment.start = current_input_ordinals.start
+      assignment.size = current_input_ordinals.size
+      assignment.idx = coinbase_ordinals.length
+      assignment.utxo = coinbase_utxo.id
+      assignment.save()
+
+      coinbase_ordinals.push(assignment)
+    }
+  }
 }
