@@ -4,7 +4,7 @@
   "scripts": {
     "build": "graph build",
     "codegen": "graph codegen",
-    "protoc": "protoc --plugin=protoc-gen-as=./node_modules/.bin/as-proto-gen --as_out=src/pb/ --proto_path=../proto/ ../proto/*.proto",
+    "protoc": "protoc --plugin=protoc-gen-as=./node_modules/.bin/as-proto-gen --as_out=src/pb/ --proto_path=../substreams/proto/ ../substreams/proto/*.proto",
     "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ bitcoin-ordinals",
     "create-local": "graph create --node http://localhost:8020/ bitcoin-ordinals",
     "remove-local": "graph remove --node http://localhost:8020/ bitcoin-ordinals",

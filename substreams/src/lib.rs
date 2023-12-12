@@ -1,7 +1,7 @@
 mod abi;
 mod pb;
 mod models;
-use models::{OrdinalsRange, OrdinalsTransfer};
+use models::{OrdinalsBlock, OrdinalsTransfer};
 // use hex_literal::hex;
 // use pb::contract::v1 as contract;
 use pb::{ordinals::v1 as ord, sf::bitcoin::r#type::v1::ScriptPubKey};
@@ -63,11 +63,9 @@ fn map_ordinals(
         total_supply.get_at((block.height - 1) as u64, "total_supply")
     } {
         let first_ordinal = total_supply;
-        let last_ordinal = first_ordinal.clone() + BigInt::from(subsidy(block.height as u64));
-
-        let mut coinbase_ordinals = OrdinalsRange {
+        let mut coinbase_ordinals = OrdinalsBlock {
             start: first_ordinal,
-            end: last_ordinal,
+            size: BigInt::from(subsidy(block.height as u64)),
         };
 
         // Handle regular transactions
@@ -91,7 +89,7 @@ fn map_ordinals(
                     utxo: tx.txid.clone() + ":" + &out.n.to_string(),
                     ordinals: Some(ord::Ordinals {
                         start: counter.clone().into(),
-                        end: (BigInt::from(sats_consumed) +counter.clone()).into()
+                        size: BigInt::from(sats_consumed).into()
                     })
                 });
                 counter = counter.clone() + BigInt::from(sats_consumed);

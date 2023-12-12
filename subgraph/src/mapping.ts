@@ -35,26 +35,65 @@ function getAssignmentOrdinals(assignment: ProtoOrdinalsAssignment): Ordinals {
   return new Ordinals("0", "0")
 }
 
-function popNOrdinals(ordinals: Array<OrdinalsAssignment>, n: BigInt): Array<OrdinalsAssignment> {
-  // TODO:
-  return []
+function popNOrdinals(
+  utxo_id: string,
+  idx: i32,
+  input_ordinals: OrdinalsAssignment,
+  rel_output_ordinals: Ordinals): OrdinalsAssignment {
+  let num_assigned = (BigInt.fromString(rel_output_ordinals.size) <= input_ordinals.size ? BigInt.fromString(rel_output_ordinals.size) : input_ordinals.size)
+  
+  // Create new block assignment
+  let ord = new OrdinalsAssignment(utxo_id + idx.toString())
+  ord.start = input_ordinals.start
+  ord.size = num_assigned
+  ord.idx = idx
+  ord.utxo = utxo_id
+
+  // Edit input block assignment
+  input_ordinals.start = input_ordinals.start.plus(num_assigned)
+  input_ordinals.size = input_ordinals.size.minus(num_assigned)
+
+  // Edit relative input block assignment
+  // TODO: Make this less convoluted
+  rel_output_ordinals.size = BigInt.fromString(rel_output_ordinals.size)
+    .minus(num_assigned)
+    .toString()
+
+  return ord
 }
 
-function numOrdinals(ordinals_assignment: OrdinalsAssignment): BigInt {
-  return ordinals_assignment.end.minus(ordinals_assignment.start).plus(BigInt.fromU32(1))
-}
-
-function assignOrdinals(ordinals: Array<OrdinalsAssignment>, utxos: Array<BigInt>): Array<Array<OrdinalsAssignment>> {
-  let utxos_assignments = new Array<Array<OrdinalsAssignment>>(utxos.length);
-  let utxo_index = 0
-
-  ordinals.forEach((assignment) => {
-    while (numOrdinals(assignment) > BigInt.zero() && utxo_index < utxos_assignments.length) {
-      
+function assignOrdinals(
+  input_utxos_ordinals: Array<OrdinalsAssignment>, 
+  rel_output_utxos_ordinals: Array<ProtoOrdinalsAssignment>,
+): Array<OrdinalsAssignment> {
+  let rev_input_ordinals = input_utxos_ordinals.reverse()
+  let utxos_ordinals = new Array<OrdinalsAssignment>()
+    
+  let rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
+  let input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
+  let utxo_id = rel_output_ordinals.utxo
+  let utxo_ordinals_indx = 0
+  
+  while (rel_output_utxos_ordinals.length > 0) {
+    if (utxo_id != rel_output_ordinals.utxo) {
+      utxo_ordinals_indx = 0
+      // sats_to_go = numOrdinals(rel_output_ordinals)
+      utxo_id = rel_output_ordinals.utxo
     }
-  })
 
-  return utxos_assignments
+    let output_ordinals = popNOrdinals(utxo_id, utxo_ordinals_indx, input_ordinals, <Ordinals>rel_output_ordinals.ordinals)
+    utxo_ordinals_indx = utxo_ordinals_indx + 1
+
+    if (input_ordinals.size == BigInt.zero()) {
+      input_ordinals = <OrdinalsAssignment>rev_input_ordinals.pop()
+    }
+    if ((<Ordinals>rel_output_ordinals.ordinals).size == BigInt.zero().toString()) {
+      rel_output_ordinals = <ProtoOrdinalsAssignment>rel_output_utxos_ordinals.pop()
+      utxos_ordinals.push(output_ordinals)
+    }
+  }
+  
+  return utxos_ordinals
 }
 
 export function handleBlock(blockBytes: Uint8Array): void {
@@ -70,8 +109,8 @@ export function handleBlock(blockBytes: Uint8Array): void {
 
       let ord_assignment = new OrdinalsAssignment(utxo.id + ":0");
       ord_assignment.block = BigInt.fromU64(block.block);
-      ord_assignment.start = BigInt.fromString(getAssignmentOrdinals(assignment).start);
-      ord_assignment.end = BigInt.fromString(getAssignmentOrdinals(assignment).end);
+      ord_assignment.start = BigInt.fromString((<Ordinals>assignment.ordinals).start);
+      ord_assignment.size = BigInt.fromString((<Ordinals>assignment.ordinals).size);
       ord_assignment.idx = idx
       ord_assignment.utxo = utxo.id
       ord_assignment.save()
@@ -92,22 +131,34 @@ export function handleBlock(blockBytes: Uint8Array): void {
       })
   
       // "Distribute" ordinals to all output UTXOs (FIFO)
-      forEach3(block, tx, input_ordinals, transfers.relativeAssignments, (block, tx, input_ordinals, assignment, idx) => {
-        let utxo = new Utxo(assignment.utxo);
-        utxo.txid = tx.txid;
-        utxo.unspent = true;
-        utxo.save();
-  
-        let start = BigInt.fromString(getAssignmentOrdinals(assignment).start);
-        let end = BigInt.fromString(getAssignmentOrdinals(assignment).end);
-        let utxo_ordinals = popNOrdinals(input_ordinals, end - start);
-        forEach2(block, utxo, utxo_ordinals, (block, utxo, utxo_assignment, idx) => {
-          utxo_assignment.utxo = utxo.id;
-          utxo_assignment.block = BigInt.fromU64(block.block);
-          utxo_assignment.idx = idx;
-          utxo_assignment.save()
-        })
-      })  
+      let new_block_assignments = assignOrdinals(
+        input_ordinals,
+        transfers.relativeAssignments,
+      );
+
+      let utxos = new Map<string, Utxo>();
+
+      forEach3(block, tx, utxos, new_block_assignments, (block, tx, utxos, block_assignment, _) => {
+        // update or create UTXO
+        let utxo = utxos.has(block_assignment.utxo) ? utxos.get(block_assignment.utxo) : null
+        if (!utxo) {
+          utxo = new Utxo(block_assignment.utxo)
+        }
+
+        utxo.block = block.block.toString()
+        utxo.txid = tx.txid
+        utxo.sats = BigInt.fromString(tx.amount)
+        utxo.unspent = true
+
+        // Edit and save block assignment
+        block_assignment.block = BigInt.fromString(block.block)
+        block_assignment.save()
+      })
+
+      // Save UTXOs
+      utxos.forEach((utxo, _, __) => {
+        utxo.save()
+      })
     }
   })
 }

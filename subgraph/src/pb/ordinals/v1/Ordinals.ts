@@ -11,7 +11,7 @@ export class Ordinals {
     writer.string(message.start);
 
     writer.uint32(18);
-    writer.string(message.end);
+    writer.string(message.size);
   }
 
   static decode(reader: Reader, length: i32): Ordinals {
@@ -26,7 +26,7 @@ export class Ordinals {
           break;
 
         case 2:
-          message.end = reader.string();
+          message.size = reader.string();
           break;
 
         default:
@@ -39,10 +39,10 @@ export class Ordinals {
   }
 
   start: string;
-  end: string;
+  size: string;
 
-  constructor(start: string = "", end: string = "") {
+  constructor(start: string = "", size: string = "") {
     this.start = start;
-    this.end = end;
+    this.size = size;
   }
 }

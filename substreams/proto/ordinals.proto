@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package ordinals.v1;
 
-// Represents a range of ordinals assigned to a given UTXO
+// Represents a block of ordinals assigned to a given UTXO
 message Ordinals {
     string start = 1;
-    string end = 2;
+    string size = 2;
 }
 
 message OrdinalsAssignment {
@@ -24,15 +24,20 @@ message OrdinalsTransfer {
 
 message OrdinalsTransfers {
     repeated string input_utxos = 1;
+    // Note: The ordinals index here are relative
+    // E.g.: The Nth to Mth ordinals of the input utxo should
+    // be transferred to the output utxo
     repeated OrdinalsAssignment relative_assignments = 2;
 }
 
 message Transaction {
     string txid = 1;
+    // Amount transferred in sats
+    string amount = 2;
     // Output number
-    uint64 idx = 2;
-    repeated OrdinalsAssignment assigments = 3;
-    OrdinalsTransfers transfers = 4;
+    uint64 idx = 3;
+    repeated OrdinalsAssignment assigments = 4;
+    OrdinalsTransfers transfers = 5;
 }
 
 message Block {
