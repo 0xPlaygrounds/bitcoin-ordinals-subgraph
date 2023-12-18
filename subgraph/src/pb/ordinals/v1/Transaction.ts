@@ -19,7 +19,7 @@ export class Transaction {
 
     const assignment = message.assignment;
     if (assignment !== null) {
-      writer.uint32(42);
+      writer.uint32(34);
       writer.fork();
       OrdinalsBlockAssignment.encode(assignment, writer);
       writer.ldelim();
@@ -28,14 +28,14 @@ export class Transaction {
     const inputUtxos = message.inputUtxos;
     if (inputUtxos.length !== 0) {
       for (let i: i32 = 0; i < inputUtxos.length; ++i) {
-        writer.uint32(50);
+        writer.uint32(42);
         writer.string(inputUtxos[i]);
       }
     }
 
     const relativeAssignments = message.relativeAssignments;
     for (let i: i32 = 0; i < relativeAssignments.length; ++i) {
-      writer.uint32(58);
+      writer.uint32(50);
       writer.fork();
       OrdinalsBlockAssignment.encode(relativeAssignments[i], writer);
       writer.ldelim();
@@ -61,18 +61,18 @@ export class Transaction {
           message.amount = reader.int64();
           break;
 
-        case 5:
+        case 4:
           message.assignment = OrdinalsBlockAssignment.decode(
             reader,
             reader.uint32()
           );
           break;
 
-        case 6:
+        case 5:
           message.inputUtxos.push(reader.string());
           break;
 
-        case 7:
+        case 6:
           message.relativeAssignments.push(
             OrdinalsBlockAssignment.decode(reader, reader.uint32())
           );

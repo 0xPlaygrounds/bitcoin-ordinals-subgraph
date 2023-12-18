@@ -4,7 +4,7 @@ schema:
 dataSources:
   - kind: substreams
     name: Ordinals
-    network: near-mainnet
+    network: mainnet
     source:
       package:
         moduleName: map_ordinals

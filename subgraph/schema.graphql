@@ -18,22 +18,34 @@ type OrdinalsAssignment @entity {
 
 type Utxo @entity {
   id: ID!
-  txid: ID!
-  block: Block!
-  sats: BigInt!
+  txid: String!
+  amount: BigInt!
   ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
   unspent: Boolean!
-  # spent_in: Block
+
+  block: Block!
+  spent_in: Block
 }
+
+# type Inscription {
+  
+#   data: String!
+# }
+
+# type Transaction {
+#   id: ID!
+#   input_utxos: [Utxo!]!
+#   output_utxos: [Utxo!]!
+#   # inscriptions: [Bytes!]!
+#   amount: BigInt!
+#   fee: BigInt!
+# }
 
 type Block @entity {
   id: ID!
+  # reward: BigInt!
+  # subsidy: BigInt!
+  # total_fees: BigInt!
   # input_utxos: [Utxo!]! @derivedFrom(field: "spent_in")
   output_utxos: [Utxo!]! @derivedFrom(field: "block")
 }
-
-# type Transaction {
-#   input_utxos: [Utxo!]!
-#   output_utxos: [Utxo!]!
-#   inscriptions: [Bytes!]!
-# }
