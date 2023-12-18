@@ -18,6 +18,7 @@ binaries:
     file: ./target/wasm32-unknown-unknown/release/substreams.wasm
 
 modules:
+  # Debug modules
   - name: map_transaction
     kind: map
     initialBlock: 0
@@ -26,6 +27,15 @@ modules:
     output:
       type: proto:sf.bitcoin.type.v1.Transaction
 
+  - name: map_inscriptions
+    kind: map
+    initialBlock: 0
+    inputs:
+      - source: sf.bitcoin.type.v1.Block
+    output:
+      type: proto:ordinals.v1.Inscriptions
+
+  # Subgraph modules
   - name: store_total_supply
     kind: store
     updatePolicy: add

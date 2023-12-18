@@ -42,3 +42,25 @@ message Block {
     // Block transactions
     repeated Transaction txs = 6;
 }
+
+message Inscription {
+    // Optional MIME type of the inscription
+    optional string content_type = 1;
+    // Optional pointer if the inscription is not for the 
+    // first ordinal of its inputs
+    optional int64 pointer = 2;
+    // Note: Not implemented
+    optional string parent = 3;
+    // Note: Not implemented
+    optional string metadata = 4;
+    // Note: Not implemented
+    optional string metaprotocol = 5;
+    // Note: Not implemented
+    optional string content_encoding = 6;
+    // Content of the inscription
+    string content = 7;
+}
+
+message Inscriptions {
+    repeated string inscriptions = 1;
+}
