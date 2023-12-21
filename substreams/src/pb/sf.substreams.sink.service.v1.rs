@@ -4,6 +4,18 @@
 pub struct DeployRequest {
     #[prost(message, optional, tag="1")]
     pub substreams_package: ::core::option::Option<super::super::super::v1::Package>,
+    #[prost(bool, tag="2")]
+    pub development_mode: bool,
+    #[prost(message, repeated, tag="3")]
+    pub environment: ::prost::alloc::vec::Vec<EnvironmentVariable>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EnvironmentVariable {
+    #[prost(string, tag="1")]
+    pub key: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub value: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -162,6 +174,11 @@ pub enum DeploymentStatus {
     Failing = 2,
     Paused = 3,
     Stopped = 4,
+    Starting = 5,
+    Pausing = 6,
+    Stopping = 7,
+    Removing = 8,
+    Resuming = 9,
 }
 impl DeploymentStatus {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -175,6 +192,11 @@ impl DeploymentStatus {
             DeploymentStatus::Failing => "FAILING",
             DeploymentStatus::Paused => "PAUSED",
             DeploymentStatus::Stopped => "STOPPED",
+            DeploymentStatus::Starting => "STARTING",
+            DeploymentStatus::Pausing => "PAUSING",
+            DeploymentStatus::Stopping => "STOPPING",
+            DeploymentStatus::Removing => "REMOVING",
+            DeploymentStatus::Resuming => "RESUMING",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -185,6 +207,11 @@ impl DeploymentStatus {
             "FAILING" => Some(Self::Failing),
             "PAUSED" => Some(Self::Paused),
             "STOPPED" => Some(Self::Stopped),
+            "STARTING" => Some(Self::Starting),
+            "PAUSING" => Some(Self::Pausing),
+            "STOPPING" => Some(Self::Stopping),
+            "REMOVING" => Some(Self::Removing),
+            "RESUMING" => Some(Self::Resuming),
             _ => None,
         }
     }

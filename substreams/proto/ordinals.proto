@@ -26,6 +26,8 @@ message Transaction {
     // E.g.: The Nth to Mth ordinals of the input utxos should
     // be assigned to some output utxo
     repeated OrdinalsBlockAssignment relative_assignments = 6;
+
+    repeated Inscription inscriptions = 7;
 }
 
 message Block {
@@ -44,23 +46,24 @@ message Block {
 }
 
 message Inscription {
+    string id = 1;
     // Optional MIME type of the inscription
-    optional string content_type = 1;
+    optional string content_type = 2;
     // Optional pointer if the inscription is not for the 
     // first ordinal of its inputs
-    optional int64 pointer = 2;
+    optional int64 pointer = 3;
     // Note: Not implemented
-    optional string parent = 3;
+    optional string parent = 4;
     // Note: Not implemented
-    optional string metadata = 4;
+    optional string metadata = 5;
     // Note: Not implemented
-    optional string metaprotocol = 5;
+    optional string metaprotocol = 6;
     // Note: Not implemented
-    optional string content_encoding = 6;
+    optional string content_encoding = 7;
     // Content of the inscription
-    string content = 7;
+    string content = 8;
 }
 
 message Inscriptions {
-    repeated string inscriptions = 1;
+    repeated Inscription inscriptions = 1;
 }

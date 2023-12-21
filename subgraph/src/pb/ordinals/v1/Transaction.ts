@@ -5,6 +5,7 @@
 
 import { Writer, Reader } from "as-proto/assembly";
 import { OrdinalsBlockAssignment } from "./OrdinalsBlockAssignment";
+import { Inscription } from "./Inscription";
 
 export class Transaction {
   static encode(message: Transaction, writer: Writer): void {
@@ -38,6 +39,14 @@ export class Transaction {
       writer.uint32(50);
       writer.fork();
       OrdinalsBlockAssignment.encode(relativeAssignments[i], writer);
+      writer.ldelim();
+    }
+
+    const inscriptions = message.inscriptions;
+    for (let i: i32 = 0; i < inscriptions.length; ++i) {
+      writer.uint32(58);
+      writer.fork();
+      Inscription.encode(inscriptions[i], writer);
       writer.ldelim();
     }
   }
@@ -78,6 +87,12 @@ export class Transaction {
           );
           break;
 
+        case 7:
+          message.inscriptions.push(
+            Inscription.decode(reader, reader.uint32())
+          );
+          break;
+
         default:
           reader.skipType(tag & 7);
           break;
@@ -93,6 +108,7 @@ export class Transaction {
   assignment: OrdinalsBlockAssignment | null;
   inputUtxos: Array<string>;
   relativeAssignments: Array<OrdinalsBlockAssignment>;
+  inscriptions: Array<Inscription>;
 
   constructor(
     txid: string = "",
@@ -100,7 +116,8 @@ export class Transaction {
     amount: i64 = 0,
     assignment: OrdinalsBlockAssignment | null = null,
     inputUtxos: Array<string> = [],
-    relativeAssignments: Array<OrdinalsBlockAssignment> = []
+    relativeAssignments: Array<OrdinalsBlockAssignment> = [],
+    inscriptions: Array<Inscription> = []
   ) {
     this.txid = txid;
     this.idx = idx;
@@ -108,5 +125,6 @@ export class Transaction {
     this.assignment = assignment;
     this.inputUtxos = inputUtxos;
     this.relativeAssignments = relativeAssignments;
+    this.inscriptions = inscriptions;
   }
 }

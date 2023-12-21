@@ -2,6 +2,7 @@ mod abi;
 mod pb;
 mod inscriptions;
 
+use inscriptions::parse_inscriptions;
 use pb::ordinals::v1 as ord;
 use pb::sf::bitcoin::r#type::v1 as btc;
 
@@ -65,7 +66,9 @@ fn map_ordinals(
             size: block_subsidy,
         }),
         input_utxos: vec![],
-        relative_assignments: vec![]
+        relative_assignments: vec![],
+        // Might not be necessary, could set to empty vec
+        inscriptions: parse_inscriptions(raw_coinbase_tx.txid.clone(), hex::decode(raw_coinbase_tx.hex.clone()).expect("hex"))
     };
 
     // Handle non-coinbase transactions
@@ -87,7 +90,8 @@ fn map_ordinals(
                         size: btc_to_sats(vout.value),
                     });
                     (counter + btc_to_sats(vout.value), rel_ass)
-                }).1
+                }).1,
+            inscriptions: parse_inscriptions(tx.txid.clone(), hex::decode(tx.hex.clone()).expect("hex"))
         }
     }).collect::<Vec<_>>();
 
@@ -108,7 +112,7 @@ fn map_ordinals(
 
 #[substreams::handlers::map]
 fn map_transaction(block: btc::Block) -> Result<btc::Transaction, substreams::errors::Error> {
-    if let Some(tx) = block.tx.get(2) {
+    if let Some(tx) = block.tx.iter().last() {
         Ok(tx.clone())
     } else {
         panic!("No transactions in block")
@@ -118,18 +122,13 @@ fn map_transaction(block: btc::Block) -> Result<btc::Transaction, substreams::er
 #[substreams::handlers::map]
 fn map_inscriptions(block: btc::Block) -> Result<ord::Inscriptions, substreams::errors::Error> {
     let inscriptions = block.tx.into_iter()
-        .filter(|tx| tx.txid == "7082cf7929797e6268aa7440d947f59f8f1b2d60d6fee3d701c02660c7510af5")
-        // .flat_map(|tx| {
-        //     // tx.vout.into_iter()
-        //     //     .filter_map(|vout| vout.script_pub_key
-        //     //             .map(|script| format!("{}: {}", tx.txid, script.asm))
-        //     //     )
-        //     //     .collect::<Vec<_>>()
-        //     tx.vin.into_iter()
-        //         .flat_map(|vin| vin.txinwitness)
-        //         .collect::<Vec<_>>()
-        // })
-        .map(|tx| tx.hex)
+        .flat_map(|tx| {
+            if tx.hex.contains("0063") {
+                parse_inscriptions(tx.txid, hex::decode(tx.hex).expect("hex"))
+            } else {
+                vec![]
+            }
+        })
         .collect::<Vec<_>>();
 
     Ok(ord::Inscriptions { inscriptions })
