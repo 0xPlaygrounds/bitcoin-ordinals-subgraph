@@ -26,13 +26,14 @@ type Utxo @entity {
   unspent: Boolean!
 
   block: Block!
+
+  # Not yet implemented
   spent_in: Block
 }
 
 type Inscription @entity {
   id: ID!
   content_type: String
-  # pointer: 
   parent: String
   metadata: String
   metaprotocol: String
@@ -43,17 +44,19 @@ type Inscription @entity {
   ordinals: OrdinalsAssignment!
 }
 
+# TODO: (maybe)
 # type Transaction {
 #   id: ID!
 #   input_utxos: [Utxo!]!
 #   output_utxos: [Utxo!]!
-#   # inscriptions: [Bytes!]!
+#   inscriptions: [Bytes!]!
 #   amount: BigInt!
 #   fee: BigInt!
 # }
 
 type Block @entity {
   id: ID!
+  # TODO: (maybe)
   # reward: BigInt!
   # subsidy: BigInt!
   # total_fees: BigInt!
