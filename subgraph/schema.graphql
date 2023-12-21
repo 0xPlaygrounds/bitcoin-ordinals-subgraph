@@ -2,7 +2,7 @@
 type OrdinalsAssignment @entity {
   # {txid}:{output_idx}:{idx}
   id: ID!
-  # Block height
+  # Block at which the ordinals were mined
   block: Block!
   # First ordinal of the block assignment
   start: BigInt!
@@ -14,7 +14,7 @@ type OrdinalsAssignment @entity {
   idx: Int!
   # UTXO to which this block of ordinals is assigned
   utxo: Utxo!
-
+  # The inscriptions present in the block assignment
   inscriptions: [Inscription!]! @derivedFrom(field: "ordinals")
 }
 
