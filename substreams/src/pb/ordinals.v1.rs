@@ -35,6 +35,8 @@ pub struct Transaction {
     /// be assigned to some output utxo
     #[prost(message, repeated, tag="6")]
     pub relative_assignments: ::prost::alloc::vec::Vec<OrdinalsBlockAssignment>,
+    #[prost(message, repeated, tag="7")]
+    pub inscriptions: ::prost::alloc::vec::Vec<Inscription>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -57,5 +59,39 @@ pub struct Block {
     /// Block transactions
     #[prost(message, repeated, tag="6")]
     pub txs: ::prost::alloc::vec::Vec<Transaction>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Inscription {
+    #[prost(string, tag="1")]
+    pub id: ::prost::alloc::string::String,
+    /// Optional MIME type of the inscription
+    #[prost(string, optional, tag="2")]
+    pub content_type: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional pointer if the inscription is not for the 
+    /// first ordinal of its inputs
+    #[prost(int64, optional, tag="3")]
+    pub pointer: ::core::option::Option<i64>,
+    /// Note: Not implemented
+    #[prost(string, optional, tag="4")]
+    pub parent: ::core::option::Option<::prost::alloc::string::String>,
+    /// Note: Not implemented
+    #[prost(string, optional, tag="5")]
+    pub metadata: ::core::option::Option<::prost::alloc::string::String>,
+    /// Note: Not implemented
+    #[prost(string, optional, tag="6")]
+    pub metaprotocol: ::core::option::Option<::prost::alloc::string::String>,
+    /// Note: Not implemented
+    #[prost(string, optional, tag="7")]
+    pub content_encoding: ::core::option::Option<::prost::alloc::string::String>,
+    /// Content of the inscription
+    #[prost(string, tag="8")]
+    pub content: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Inscriptions {
+    #[prost(message, repeated, tag="1")]
+    pub inscriptions: ::prost::alloc::vec::Vec<Inscription>,
 }
 // @@protoc_insertion_point(module)

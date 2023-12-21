@@ -3,7 +3,7 @@ import { Block } from "./pb/ordinals/v1/Block"
 import { Ordinals } from './pb/ordinals/v1/Ordinals';
 import { OrdinalsAssignment as ProtoOrdinalsAssignment } from './pb/ordinals/v1/OrdinalsAssignment';
 import { OrdinalsTransfers as ProtoOrdinalsTransfers } from './pb/ordinals/v1/OrdinalsTransfers';
-import { Block as BlockEntity, OrdinalsAssignment, Utxo } from '../generated/schema';
+import { Block as BlockEntity, Inscription, OrdinalsAssignment, Utxo } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction } from './pb/ordinals/v1/Transaction';
 import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
@@ -29,7 +29,15 @@ function popNOrdinals(
   ord.start = input_ordinals.start
   ord.size = num_assigned
   ord.idx = idx
+  ord.block = input_ordinals.block
   ord.utxo = rel_output_ordinals.utxo
+
+  // Reassign inscriptions
+  let inscriptions = input_ordinals.inscriptions.load()
+  for (let i = 0; i < inscriptions.length; ++i) {
+    inscriptions[i].ordinals = ord.id
+    inscriptions[i].save()
+  }
 
   // Edit input block assignment
   input_ordinals.start = input_ordinals.start.plus(num_assigned)
@@ -63,7 +71,7 @@ export function handleBlock(blockBytes: Uint8Array): void {
   coinbase_utxo.save();
 
   let ord_assignment = new OrdinalsAssignment(coinbase_utxo.id + ":0");
-  // ord_assignment.block = BigInt.fromI64(block.number);
+  ord_assignment.block = block_.id;
   ord_assignment.start = BigInt.fromI64((<OrdinalsBlockAssignment>coinbase_tx.assignment).start);
   ord_assignment.size = BigInt.fromI64((<OrdinalsBlockAssignment>coinbase_tx.assignment).size);
   ord_assignment.idx = 0
@@ -74,7 +82,7 @@ export function handleBlock(blockBytes: Uint8Array): void {
   // Handle ordinals transfers for non-coinbase transactions
   for (let i = 1; i < block.txs.length; ++i) {
     let tx = block.txs[i];
-    log.info("Processing transaction {}", [tx.txid])
+    // log.info("Processing transaction {}", [tx.txid])
 
     // Collect ordinals of all input UTXOs
     let input_ordinals = new Array<OrdinalsAssignment>(0);
@@ -95,6 +103,21 @@ export function handleBlock(blockBytes: Uint8Array): void {
       utxo.unspent = false
       utxo.spent_in = block_.id
       utxo.save()
+    }
+
+    // Handle inscriptions
+    for (let insc = 0; insc < tx.inscriptions.length; ++insc) {
+      let inscription = new Inscription(tx.inscriptions[insc].id)
+      inscription.content_type = tx.inscriptions[insc].contentType
+      // inscription.pointer = BigInt.fromI64(tx.inscriptions[insc].pointer)
+      inscription.parent = tx.inscriptions[insc].parent
+      inscription.metadata = tx.inscriptions[insc].metadata
+      inscription.metaprotocol = tx.inscriptions[insc].metaprotocol
+      inscription.content_encoding = tx.inscriptions[insc].contentEncoding
+      inscription.content = tx.inscriptions[insc].content
+      inscription.ordinals = input_ordinals[0].id
+      inscription.ordinal = input_ordinals[0].start.plus(BigInt.fromI64(tx.inscriptions[insc].pointer))
+      inscription.save()
     }
 
     // Reverse order for FIFO
@@ -148,6 +171,7 @@ export function handleBlock(blockBytes: Uint8Array): void {
       assignment.size = current_input_ordinals.size
       assignment.idx = coinbase_ordinals.length
       assignment.utxo = coinbase_utxo.id
+      assignment.block = current_input_ordinals.block
       assignment.save()
 
       coinbase_ordinals.push(assignment)
