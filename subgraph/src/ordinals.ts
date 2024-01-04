@@ -42,6 +42,17 @@ export function popNOrdinals(ordinal_blocks: OrdinalBlock[], n: i64): OrdinalBlo
     return blocks
 }
 
+export function getNthOrdinal(ordinal_blocks: OrdinalBlock[], n: i64): BigInt {
+    let total: i64 = 0
+    let idx = 0;
+    while (total < n) {
+        total += ordinal_blocks[idx].size.toI64()
+        idx += 1
+    }
+
+    return ordinal_blocks[idx - 1].start.plus(BigInt.fromI64(n - total))
+}
+
 /**
  * Deserializes a string representing ordinal blocks into an array of OrdinalsBlock objects.
  * 

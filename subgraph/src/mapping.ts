@@ -7,7 +7,7 @@ import { Block, Inscription, OrdinalsAssignment, Transaction, Utxo } from '../ge
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
 import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
-import { OrdinalBlock, deserialize, popNOrdinals, serialize } from './ordinals'
+import { OrdinalBlock, deserialize, getNthOrdinal, popNOrdinals, serialize } from './ordinals'
 
 export function handleBlock(blockBytes: Uint8Array): void {
   const block = Protobuf.decode<ProtoBlock>(blockBytes, ProtoBlock.decode);
@@ -45,6 +45,17 @@ function loadUTXOs(ids: string[]): Utxo[] {
   return utxos
 }
 
+function getNthSatUtxo(utxos: Utxo[], n: i64): Utxo {
+  let total: i64 = 0
+  let idx = 0;
+  while (total < n) {
+    total += utxos[idx].amount.toI64()
+    idx += 1
+  }
+
+  return utxos[idx - 1]
+}
+
 function handleRegularTransaction(block: Block, transaction: ProtoTransaction): OrdinalBlock[] {
   // Load input UTXOs and ordinals
   let input_utxos = loadUTXOs(transaction.inputUtxos)
@@ -72,7 +83,8 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
     // inscription.ordinals = input_ordinals[0].id
     inscription.genesisTransaction = transaction.txid
     inscription.genesisAddress = transaction.relativeAssignments[0].address
-    inscription.ordinal = input_ordinals[0].start.plus(BigInt.fromI64(transaction.inscriptions[insc].pointer))
+    inscription.ordinal = getNthOrdinal(input_ordinals, transaction.inscriptions[insc].pointer)
+    inscription.utxo = getNthSatUtxo(input_utxos, transaction.inscriptions[insc].pointer).id
     inscription.save()
   }
 
