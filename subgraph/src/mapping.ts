@@ -3,7 +3,7 @@ import { Block as ProtoBlock } from "./pb/ordinals/v1/Block"
 import { Ordinals } from './pb/ordinals/v1/Ordinals';
 import { OrdinalsAssignment as ProtoOrdinalsAssignment } from './pb/ordinals/v1/OrdinalsAssignment';
 import { OrdinalsTransfers as ProtoOrdinalsTransfers } from './pb/ordinals/v1/OrdinalsTransfers';
-import { Block, Inscription, OrdinalsAssignment, Transaction, Utxo } from '../generated/schema';
+import { Block, Inscription, Transaction, Utxo } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
 import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
