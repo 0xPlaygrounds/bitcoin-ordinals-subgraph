@@ -15,20 +15,21 @@ type OrdinalsAssignment @entity {
   # UTXO to which this block of ordinals is assigned
   utxo: Utxo!
   # The inscriptions present in the block assignment
-  inscriptions: [Inscription!]! @derivedFrom(field: "ordinals")
+  # inscriptions: [Inscription!]! @derivedFrom(field: "ordinals")
 }
 
 type Utxo @entity {
   id: ID!
-  txid: String!
+  address: String
   amount: BigInt!
-  ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
+  # ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
+  ordinalsSlug: String!
   unspent: Boolean!
 
-  block: Block!
+  transaction: Transaction!
 
   # Not yet implemented
-  spent_in: Block
+  spentIn: Transaction
 }
 
 type Inscription @entity {
@@ -37,29 +38,45 @@ type Inscription @entity {
   parent: String
   metadata: String
   metaprotocol: String
-  content_encoding: String
+  contentEncoding: String
   content: String!
 
+  genesisTransaction: Transaction!
+  genesisAddress: String!
+
   ordinal: BigInt!
-  ordinals: OrdinalsAssignment!
+  # ordinals: OrdinalsAssignment!
+  # ordinalsSlug: String!
 }
 
 # TODO: (maybe)
-# type Transaction {
-#   id: ID!
-#   input_utxos: [Utxo!]!
-#   output_utxos: [Utxo!]!
-#   inscriptions: [Bytes!]!
-#   amount: BigInt!
-#   fee: BigInt!
-# }
+type Transaction @entity {
+  id: ID!
+  # Index of the transaction in its block
+  idx: BigInt!
+  # Total amount transferred (in sats)
+  amount: BigInt!
+  # Fee paid (in sats)
+  fee: BigInt!
+  inputUtxos: [Utxo!]! @derivedFrom(field: "spentIn")
+  outputUtxos: [Utxo!]! @derivedFrom(field: "transaction")
+  # inscriptions: [Bytes!]!
+  block: Block!
+}
 
 type Block @entity {
+  # Block height as string
   id: ID!
-  # TODO: (maybe)
-  # reward: BigInt!
-  # subsidy: BigInt!
-  # total_fees: BigInt!
-  # input_utxos: [Utxo!]! @derivedFrom(field: "spent_in")
-  output_utxos: [Utxo!]! @derivedFrom(field: "block")
+  # Block height
+  height: BigInt!
+  # Block timestamp
+  timestamp: BigInt!
+  # Total miner reward (in sats)
+  reward: BigInt!
+  # Block subsidy (in sats)
+  subsidy: BigInt!
+  # Miner fees (in sats)
+  fees: BigInt!
+
+  transactions: [Transaction!]! @derivedFrom(field: "block")
 }

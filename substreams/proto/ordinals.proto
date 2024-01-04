@@ -5,8 +5,9 @@ package ordinals.v1;
 // Represents a continuous block of ordinals assigned to a given UTXO
 message OrdinalsBlockAssignment {
     string utxo = 1;
-    int64 start = 2;
-    int64 size = 3;
+    optional string address = 2;
+    int64 start = 3;
+    int64 size = 4;
 }
 
 message Transaction {

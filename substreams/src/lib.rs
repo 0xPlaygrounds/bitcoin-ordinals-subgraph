@@ -1,13 +1,15 @@
-mod abi;
+// mod abi;
 mod pb;
 mod inscriptions;
+mod address;
 
 use inscriptions::parse_inscriptions;
+use address::address_from_scriptpubkey;
 use pb::ordinals::v1 as ord;
 use pb::sf::bitcoin::r#type::v1 as btc;
 
-#[allow(unused_imports)]
-use num_traits::cast::ToPrimitive;
+// #[allow(unused_imports)]
+// use num_traits::cast::ToPrimitive;
 use substreams::store::{StoreAddInt64, StoreGetInt64};
 use substreams::store::{StoreAdd, StoreGet, StoreNew};
 
@@ -24,6 +26,15 @@ fn btc_to_sats(btc_amount: f64) -> i64 {
     let s = format!("{:.8}", btc_amount);
     s.replace(".", "").parse::<i64>().unwrap()
 }
+
+
+// fn main() {
+//     let script_pub_key = "76a91489abcdefabbaabbaabbaabbaabbaabbaabba88ac";
+//     match extract_bitcoin_address(script_pub_key) {
+//         Ok(address) => println!("Bitcoin Address: {}", address),
+//         Err(e) => println!("Error: {}", e),
+//     }
+// }
 
 // From https://github.com/ordinals/ord/blob/master/bip.mediawiki
 fn subsidy(height: i64) -> i64 {
@@ -62,6 +73,7 @@ fn map_ordinals(
         amount: raw_coinbase_tx.amount(),
         assignment: Some(ord::OrdinalsBlockAssignment {
             utxo: raw_coinbase_tx.txid.clone() + ":0",
+            address: address_from_scriptpubkey(&raw_coinbase_tx.vout[0].script_pub_key.as_ref().unwrap().hex),
             start: first_ordinal,
             size: block_subsidy,
         }),
@@ -86,6 +98,7 @@ fn map_ordinals(
                 .fold((0, vec![]), |(counter, mut rel_ass), vout| {
                     rel_ass.push(ord::OrdinalsBlockAssignment {
                         utxo: tx.txid.clone() + ":" + &vout.n.to_string(),
+                        address: address_from_scriptpubkey(&vout.script_pub_key.as_ref().unwrap().hex),
                         start: counter,
                         size: btc_to_sats(vout.value),
                     });

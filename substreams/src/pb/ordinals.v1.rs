@@ -5,9 +5,11 @@
 pub struct OrdinalsBlockAssignment {
     #[prost(string, tag="1")]
     pub utxo: ::prost::alloc::string::String,
-    #[prost(int64, tag="2")]
-    pub start: i64,
+    #[prost(string, optional, tag="2")]
+    pub address: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(int64, tag="3")]
+    pub start: i64,
+    #[prost(int64, tag="4")]
     pub size: i64,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
