@@ -10,10 +10,13 @@ export class OrdinalsBlockAssignment {
     writer.uint32(10);
     writer.string(message.utxo);
 
-    writer.uint32(16);
-    writer.int64(message.start);
+    writer.uint32(18);
+    writer.string(message.address);
 
     writer.uint32(24);
+    writer.int64(message.start);
+
+    writer.uint32(32);
     writer.int64(message.size);
   }
 
@@ -29,10 +32,14 @@ export class OrdinalsBlockAssignment {
           break;
 
         case 2:
-          message.start = reader.int64();
+          message.address = reader.string();
           break;
 
         case 3:
+          message.start = reader.int64();
+          break;
+
+        case 4:
           message.size = reader.int64();
           break;
 
@@ -46,11 +53,18 @@ export class OrdinalsBlockAssignment {
   }
 
   utxo: string;
+  address: string;
   start: i64;
   size: i64;
 
-  constructor(utxo: string = "", start: i64 = 0, size: i64 = 0) {
+  constructor(
+    utxo: string = "",
+    address: string = "",
+    start: i64 = 0,
+    size: i64 = 0
+  ) {
     this.utxo = utxo;
+    this.address = address;
     this.start = start;
     this.size = size;
   }

@@ -1,34 +1,15 @@
-# Block assignment for ordinals
-type OrdinalsAssignment @entity {
-  # {txid}:{output_idx}:{idx}
-  id: ID!
-  # Block at which the ordinals were mined
-  block: Block!
-  # First ordinal of the block assignment
-  start: BigInt!
-  # Number of ordinals in the block assignment
-  size: BigInt!
-  # The index of the block assignment of the UTXO (starts at 0)
-  # E.g.: An idx of 2 signifies that it is the 3rd block assignment 
-  # of ordinals for the utxo
-  idx: Int!
-  # UTXO to which this block of ordinals is assigned
-  utxo: Utxo!
-  # The inscriptions present in the block assignment
-  inscriptions: [Inscription!]! @derivedFrom(field: "ordinals")
-}
-
 type Utxo @entity {
   id: ID!
-  txid: String!
+  address: String
   amount: BigInt!
-  ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
+  # ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
+  ordinalsSlug: String!
   unspent: Boolean!
 
-  block: Block!
+  transaction: Transaction!
+  spentIn: Transaction
 
-  # Not yet implemented
-  spent_in: Block
+  inscriptions: [Inscription!]! @derivedFrom(field: "utxo")
 }
 
 type Inscription @entity {
@@ -37,29 +18,44 @@ type Inscription @entity {
   parent: String
   metadata: String
   metaprotocol: String
-  content_encoding: String
+  contentEncoding: String
   content: String!
 
+  genesisTransaction: Transaction!
+  genesisAddress: String!
+
   ordinal: BigInt!
-  ordinals: OrdinalsAssignment!
+  utxo: Utxo!
 }
 
 # TODO: (maybe)
-# type Transaction {
-#   id: ID!
-#   input_utxos: [Utxo!]!
-#   output_utxos: [Utxo!]!
-#   inscriptions: [Bytes!]!
-#   amount: BigInt!
-#   fee: BigInt!
-# }
+type Transaction @entity {
+  id: ID!
+  # Index of the transaction in its block
+  idx: BigInt!
+  # Total amount transferred (in sats)
+  amount: BigInt!
+  # Fee paid (in sats)
+  fee: BigInt!
+  inputUtxos: [Utxo!]! @derivedFrom(field: "spentIn")
+  outputUtxos: [Utxo!]! @derivedFrom(field: "transaction")
+  # inscriptions: [Bytes!]!
+  block: Block!
+}
 
 type Block @entity {
+  # Block height as string
   id: ID!
-  # TODO: (maybe)
-  # reward: BigInt!
-  # subsidy: BigInt!
-  # total_fees: BigInt!
-  # input_utxos: [Utxo!]! @derivedFrom(field: "spent_in")
-  output_utxos: [Utxo!]! @derivedFrom(field: "block")
+  # Block height
+  height: BigInt!
+  # Block timestamp
+  timestamp: BigInt!
+  # Total miner reward (in sats)
+  reward: BigInt!
+  # Block subsidy (in sats)
+  subsidy: BigInt!
+  # Miner fees (in sats)
+  fees: BigInt!
+
+  transactions: [Transaction!]! @derivedFrom(field: "block")
 }
