@@ -35,21 +35,10 @@ modules:
     output:
       type: proto:ordinals.v1.Inscriptions
 
-  # Subgraph modules
-  - name: store_total_supply
-    kind: store
-    updatePolicy: add
-    valueType: int64
-    inputs:
-      - source: sf.bitcoin.type.v1.Block
-    doc: |
-      `int` store accumulator for the total number of sats in existence.
-
   - name: map_ordinals
     kind: map
     initialBlock: 0
     inputs:
       - source: sf.bitcoin.type.v1.Block
-      - store: store_total_supply
     output:
       type: proto:ordinals.v1.Block

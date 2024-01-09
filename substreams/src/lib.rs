@@ -1,17 +1,14 @@
-// mod abi;
 mod pb;
 mod inscriptions;
 mod address;
+mod sats_utils;
 
 use inscriptions::parse_inscriptions;
 use address::address_from_scriptpubkey;
 use pb::ordinals::v1 as ord;
 use pb::sf::bitcoin::r#type::v1 as btc;
 
-// #[allow(unused_imports)]
-// use num_traits::cast::ToPrimitive;
-use substreams::store::{StoreAddInt64, StoreGetInt64};
-use substreams::store::{StoreAdd, StoreGet, StoreNew};
+use sats_utils::{btc_to_sats, subsidy, block_supply};
 
 impl btc::Transaction {
     pub fn amount(&self) -> i64 {
@@ -21,44 +18,11 @@ impl btc::Transaction {
     }
 }
 
-
-fn btc_to_sats(btc_amount: f64) -> i64 {
-    let s = format!("{:.8}", btc_amount);
-    s.replace(".", "").parse::<i64>().unwrap()
-}
-
-
-// fn main() {
-//     let script_pub_key = "76a91489abcdefabbaabbaabbaabbaabbaabbaabba88ac";
-//     match extract_bitcoin_address(script_pub_key) {
-//         Ok(address) => println!("Bitcoin Address: {}", address),
-//         Err(e) => println!("Error: {}", e),
-//     }
-// }
-
-// From https://github.com/ordinals/ord/blob/master/bip.mediawiki
-fn subsidy(height: i64) -> i64 {
-    50 * 100_000_000 >> (height / 210_000)
-}
-
-#[substreams::handlers::store]
-fn store_total_supply(block: btc::Block, store: StoreAddInt64) {
-    store.add(
-        block.height as u64,
-        "total_supply",
-        subsidy(block.height),
-    );
-}
-
 #[substreams::handlers::map]
-fn map_ordinals(
-    block: btc::Block,
-    total_supply: StoreGetInt64,
-) -> Result<ord::Block, substreams::errors::Error> {
+fn map_ordinals(block: btc::Block) -> Result<ord::Block, substreams::errors::Error> {
     // Total supply of sats before the block is mined
     let total_supply = if block.height == 0 {0} else {
-        total_supply.get_at((block.height - 1) as u64, "total_supply")
-            .expect("Total supply exists")
+        block_supply(block.height - 1)
     };
     let block_subsidy = subsidy(block.height);
 
@@ -87,7 +51,7 @@ fn map_ordinals(
     let mut transactions = block.tx[1..].iter().enumerate().map(|(idx, tx)| {
         ord::Transaction {
             txid: tx.txid.clone(),
-            idx: idx as i64,
+            idx: (idx + 1) as i64,
             amount: tx.amount(),
             // fee: 
             assignment: None,

@@ -96,22 +96,43 @@ impl State {
             },
             (State::Field(Field::Parent), [size]) => {
                 let parent_bytes = bytes.pop_n(*size as usize);
-                // TODO: Handle parent field
+                
+                // Parse parent id
+                let mut parent_id_bytes = parent_bytes[..32].to_vec();
+                parent_id_bytes.reverse();
+                let parent_id = hex::encode(parent_id_bytes);
+                
+                // Parse parent idx
+                let mut parent_idx_bytes = parent_bytes[32..].to_vec();
+                if parent_idx_bytes.len() < 4 {
+                    parent_idx_bytes.extend(vec![0; 4 - parent_idx_bytes.len()])
+                }
+                let parent_idx = parse_little_endian_uint(parent_idx_bytes) as i64;
+
+                inscription.parent(
+                    format!("{parent_id}i{parent_idx}", parent_id=parent_id, parent_idx=parent_idx)
+                );
                 State::Inscription
             },
             (State::Field(Field::Metadata), [size]) => {
                 let metadata_bytes = bytes.pop_n(*size as usize);
-                // TODO: Handle metadata field
+                inscription.metadata(
+                    String::from_utf8(metadata_bytes).expect("Valid metadata")
+                );
                 State::Inscription
             },
             (State::Field(Field::MetaProtocol), [size]) => {
                 let metaprotocol_bytes = bytes.pop_n(*size as usize);
-                // TODO: Handle metaprotocol field
+                inscription.metaprotocol(
+                    String::from_utf8(metaprotocol_bytes).expect("Valid metaprotocol type")
+                );
                 State::Inscription
             },
             (State::Field(Field::ContentEncoding), [size]) => {
                 let content_encoding_bytes = bytes.pop_n(*size as usize);
-                // TODO: Handle content_encoding field
+                inscription.content_encoding(
+                    String::from_utf8(content_encoding_bytes).expect("Valid content encoding")
+                );
                 State::Inscription
             },
 
@@ -122,14 +143,6 @@ impl State {
                 let size = bytes.pop_n(1);
                 let content_bytes = bytes.pop_n(parse_little_endian_uint(size) as usize);
                 inscription.append_content(
-                    // if inscription.content_type.as_ref()
-                    //     .map(|content_type| content_type.starts_with("text"))
-                    //     .unwrap_or(false)
-                    // {
-                    //     String::from_utf8(content_bytes).expect(&format!("Valid content {:?}", inscription.content_type))
-                    // } else {
-                    //     hex::encode(content_bytes)
-                    // }
                     match String::from_utf8(content_bytes.clone()) {
                         Ok(content) => content,
                         Err(_) => hex::encode(content_bytes)
@@ -149,7 +162,7 @@ impl State {
                 State::Content
             },
             (State::Content, [0x4e]) => {
-                let size = bytes.pop_n(3);
+                let size = bytes.pop_n(4);
                 let content_bytes = bytes.pop_n(parse_little_endian_uint(size) as usize);
                 inscription.append_content(
                     match String::from_utf8(content_bytes.clone()) {

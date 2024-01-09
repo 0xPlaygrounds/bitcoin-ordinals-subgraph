@@ -28,7 +28,6 @@ type Inscription @entity {
   utxo: Utxo!
 }
 
-# TODO: (maybe)
 type Transaction @entity {
   id: ID!
   # Index of the transaction in its block
