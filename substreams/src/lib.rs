@@ -44,7 +44,13 @@ fn map_ordinals(block: btc::Block) -> Result<ord::Block, substreams::errors::Err
         input_utxos: vec![],
         relative_assignments: vec![],
         // Might not be necessary, could set to empty vec
-        inscriptions: parse_inscriptions(raw_coinbase_tx.txid.clone(), hex::decode(raw_coinbase_tx.hex.clone()).expect("hex"))
+        inscriptions: match parse_inscriptions(raw_coinbase_tx.txid.clone(), hex::decode(raw_coinbase_tx.hex.clone()).expect("hex")) {
+            Ok(inscriptions) => inscriptions,
+            Err(err) => {
+                substreams::log::info!("Error parsing inscriptions in tx {}: {}", raw_coinbase_tx.txid, err);
+                vec![]
+            }
+        }
     };
 
     // Handle non-coinbase transactions
@@ -68,7 +74,13 @@ fn map_ordinals(block: btc::Block) -> Result<ord::Block, substreams::errors::Err
                     });
                     (counter + btc_to_sats(vout.value), rel_ass)
                 }).1,
-            inscriptions: parse_inscriptions(tx.txid.clone(), hex::decode(tx.hex.clone()).expect("hex"))
+            inscriptions: match parse_inscriptions(tx.txid.clone(), hex::decode(tx.hex.clone()).expect("hex")) {
+                Ok(inscriptions) => inscriptions,
+                Err(err) => {
+                    substreams::log::info!("Error parsing inscriptions in tx {}: {}", tx.txid, err);
+                    vec![]
+                }
+            }
         }
     }).collect::<Vec<_>>();
 
@@ -99,9 +111,16 @@ fn map_transaction(block: btc::Block) -> Result<btc::Transaction, substreams::er
 #[substreams::handlers::map]
 fn map_inscriptions(block: btc::Block) -> Result<ord::Inscriptions, substreams::errors::Error> {
     let inscriptions = block.tx.into_iter()
+        .filter(|tx| tx.txid == "6fb976ab49dcec017f1e201e84395983204ae1a7c2abf7ced0a85d692e442799")
         .flat_map(|tx| {
             if tx.hex.contains("0063") {
-                parse_inscriptions(tx.txid, hex::decode(tx.hex).expect("hex"))
+                match parse_inscriptions(tx.txid.clone(), hex::decode(tx.hex).expect("hex")) {
+                    Ok(inscriptions) => inscriptions,
+                    Err(err) => {
+                        substreams::log::info!("Error parsing inscriptions in tx {}: {}", tx.txid, err);
+                        vec![]
+                    }
+                }
             } else {
                 vec![]
             }

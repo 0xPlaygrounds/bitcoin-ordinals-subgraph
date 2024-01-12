@@ -2,6 +2,7 @@
 /// Based on https://docs.ordinals.com/inscriptions.html
 
 use crate::pb::ordinals::v1::Inscription;
+use anyhow::Result;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Field {
@@ -26,7 +27,7 @@ pub enum State {
 impl State {
     fn bytes_to_fetch(&self) -> usize {
         match self {
-            State::None => 2,
+            State::None => 1,
             State::Envelope => 1,
             State::Inscription => 1,
             State::NotInscription => 1,
@@ -35,21 +36,30 @@ impl State {
         }
     }
 
-    fn next_state(&self, bytes: &mut Vec<u8>, inscription: &mut InscriptionBuilder) -> Self {
+    fn next_state(&self, bytes: &mut Vec<u8>, inscription: &mut InscriptionBuilder) -> Result<Self> {
         // let binding = bytes.pop_n(self.bytes_to_fetch());
         // let pat = (self, binding.as_slice());
         // println!("State: {:?}, {:02X?}", pat.0, pat.1);
         // match pat {
         match (self, bytes.pop_n(self.bytes_to_fetch()).as_slice()) {
             // We enter the envelope
-            (State::None, [0x00, 0x63]) => State::Envelope,
+            (State::None, [0x00]) => {
+                if bytes.pop_n(1) == [0x63] {
+                    Ok(State::Envelope)
+                } else {
+                    Ok(State::None)
+                }
+            },
 
             // Envelope either contains an inscription or something else
             (State::Envelope, [size]) => {
                 let data = bytes.pop_n(*size as usize);
                 match String::from_utf8(data).as_deref() {
-                    Ok("ord") => State::Inscription,
-                    _ => State::NotInscription
+                    Ok("ord") => Ok(State::Inscription),
+                    maybe => {
+                        substreams::log::debug!("Not an inscription: {:?}", maybe);
+                        Ok(State::NotInscription)
+                    }
                 }
             },
 
@@ -62,22 +72,22 @@ impl State {
             // (State::Inscription, [0x01, 0x09]) => State::Field(Field::ContentEncoding),
             (State::Inscription, [0x01]) => {
                 match bytes.pop_n(1).as_slice() {
-                    [0x01] => State::Field(Field::ContentType),
-                    [0x02] => State::Field(Field::Pointer),
-                    [0x03] => State::Field(Field::Parent),
-                    [0x05] => State::Field(Field::Metadata),
-                    [0x07] => State::Field(Field::MetaProtocol),
-                    [0x09] => State::Field(Field::ContentEncoding),
-                    flag => panic!("Unexpected field flag! {flag:?}")
+                    [0x01] => Ok(State::Field(Field::ContentType)),
+                    [0x02] => Ok(State::Field(Field::Pointer)),
+                    [0x03] => Ok(State::Field(Field::Parent)),
+                    [0x05] => Ok(State::Field(Field::Metadata)),
+                    [0x07] => Ok(State::Field(Field::MetaProtocol)),
+                    [0x09] => Ok(State::Field(Field::ContentEncoding)),
+                    flag => anyhow::bail!("Unexpected field flag! {flag:?}")
                 }
             },
 
             // End of fields, beginning of content
             // (State::Inscription, [0x01, 0x00]) => State::Content,
-            (State::Inscription, [0x00]) => State::Content,
+            (State::Inscription, [0x00]) => Ok(State::Content),
 
             // End of the envelope
-            (State::NotInscription, [0x68]) => State::None,
+            (State::NotInscription, [0x68]) => Ok(State::None),
 
             // Handling of different fields
             (State::Field(Field::ContentType), [size]) => {
@@ -85,14 +95,14 @@ impl State {
                 inscription.content_type(
                     String::from_utf8(content_type_bytes).expect("Valid content type")
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
             (State::Field(Field::Pointer), [size]) => {
                 let pointer_bytes = bytes.pop_n(*size as usize);
                 inscription.pointer(
                     parse_little_endian_uint(pointer_bytes) as i64
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
             (State::Field(Field::Parent), [size]) => {
                 let parent_bytes = bytes.pop_n(*size as usize);
@@ -112,32 +122,32 @@ impl State {
                 inscription.parent(
                     format!("{parent_id}i{parent_idx}", parent_id=parent_id, parent_idx=parent_idx)
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
             (State::Field(Field::Metadata), [size]) => {
                 let metadata_bytes = bytes.pop_n(*size as usize);
                 inscription.metadata(
                     String::from_utf8(metadata_bytes).expect("Valid metadata")
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
             (State::Field(Field::MetaProtocol), [size]) => {
                 let metaprotocol_bytes = bytes.pop_n(*size as usize);
                 inscription.metaprotocol(
                     String::from_utf8(metaprotocol_bytes).expect("Valid metaprotocol type")
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
             (State::Field(Field::ContentEncoding), [size]) => {
                 let content_encoding_bytes = bytes.pop_n(*size as usize);
                 inscription.content_encoding(
                     String::from_utf8(content_encoding_bytes).expect("Valid content encoding")
                 );
-                State::Inscription
+                Ok(State::Inscription)
             },
 
             // End of content
-            (State::Content, [0x68]) => State::None,
+            (State::Content, [0x68]) => Ok(State::None),
             // Content
             (State::Content, [0x4c]) => {
                 let size = bytes.pop_n(1);
@@ -148,7 +158,7 @@ impl State {
                         Err(_) => hex::encode(content_bytes)
                     }
                 );
-                State::Content
+                Ok(State::Content)
             },
             (State::Content, [0x4d]) => {
                 let size = bytes.pop_n(2);
@@ -159,7 +169,7 @@ impl State {
                         Err(_) => hex::encode(content_bytes)
                     }
                 );
-                State::Content
+                Ok(State::Content)
             },
             (State::Content, [0x4e]) => {
                 let size = bytes.pop_n(4);
@@ -170,7 +180,7 @@ impl State {
                         Err(_) => hex::encode(content_bytes)
                     }
                 );
-                State::Content
+                Ok(State::Content)
             },
             (State::Content, [size]) => {
                 let content_bytes = bytes.pop_n(*size as usize);
@@ -180,11 +190,11 @@ impl State {
                         Err(_) => hex::encode(content_bytes)
                     }
                 );
-                State::Content
+                Ok(State::Content)
             },
 
             // Base case: no state change
-            (state, _) => state.clone(),
+            (state, _) => Ok(state.clone()),
         }
     }
 }
@@ -276,16 +286,18 @@ impl InscriptionBuilder {
     }
 }
 
-pub fn parse_inscriptions(txid: String, mut bytes: Vec<u8>) -> Vec<Inscription> {
+pub fn parse_inscriptions(txid: String, mut bytes: Vec<u8>) -> Result<Vec<Inscription>> {
     bytes.reverse();
 
     let mut state = State::None;
     let mut inscriptions = vec![];
     let mut builder = InscriptionBuilder::new(format!("{txid}i0"));
 
+    // substreams::log::info!(format!("Parsing inscriptions for txid: {}", txid));
     while bytes.len() > 0 {
-        let new_state = state.next_state(&mut bytes, &mut builder);
-        
+        let new_state = state.next_state(&mut bytes, &mut builder)?;
+        // substreams::log::info!(format!("State: {:?} -> {:?}", state, new_state));
+
         if state == State::Content && new_state == State::None {
             // We have a new inscription!
             inscriptions.push(builder.build());
@@ -295,10 +307,10 @@ pub fn parse_inscriptions(txid: String, mut bytes: Vec<u8>) -> Vec<Inscription> 
     }
 
     if state != State::None && state != State::NotInscription {
-        panic!("Incomplete inscription parsing")
+        anyhow::bail!("Incomplete inscription parsing")
     }
 
-    inscriptions
+    Ok(inscriptions)
 }
 
 
@@ -351,7 +363,13 @@ mod tests {
         let bytes = hex::decode("020000000001014f6864054ab62b8f117864e3da82860c9228e08f991b18c230639e46b5867b0a0000000000fdffffff0222020000000000001600147b1af8377c5dead9eb248dfd1abb1beaee4f01cc73050000000000001600148bb6a9b6377fcfa3c795463e626572bdfb6a04170340831e5c34cda94e19ac8555f872b51bb33befb3e90010280d8875f24a4a2db298ed24ff7e8c62aefe143427ce3d6d09724aaef12dac7f0ec960603ae51a622763812068907e44b6ebd5e4c74479650cd5c6069c4858764b8e679b6c8a9995a8f69d07ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d38003b7b2270223a226272632d3230222c226f70223a227472616e73666572222c227469636b223a22504c5858222c22616d74223a22363736373030227d6821c13483067951fefc4cc8dd18b855bf4b3e8079fb6f6b7ec319ee6eeacfc678a29300000000")
             .expect("hex");
 
-        let inscriptions = parse_inscriptions("ABC".into(), bytes);
+        let inscriptions = match parse_inscriptions("ABC".into(), bytes) {
+            Ok(inscriptions) => inscriptions,
+            Err(err) => {
+                assert!(false, "Failed to parse inscriptions: {:?}", err);
+                vec![]
+            }
+        };
 
         assert_eq!(
             inscriptions,
