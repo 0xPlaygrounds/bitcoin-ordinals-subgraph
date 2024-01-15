@@ -6,7 +6,6 @@ mod sats_utils;
 use bitcoin::{consensus::deserialize, hashes::hex::FromHex, Transaction};
 use ord::envelope::ParsedEnvelope;
 use address::address_from_scriptpubkey;
-use ord::inscription;
 use pb::ordinals::v1::{self as ord_proto, Inscription};
 use pb::sf::bitcoin::r#type::v1 as btc;
 use anyhow::Result;
@@ -134,16 +133,13 @@ fn parse_inscriptions(tx: btc::Transaction) -> Result<Vec<Inscription>> {
     let raw_trx = Vec::from_hex(&tx.hex).unwrap();
     let tx_: Transaction = deserialize(&raw_trx).unwrap();
     let envelopes = ParsedEnvelope::from_transaction(&tx_);
-    let inscriptions = envelopes.into_iter().filter_map(move |envelope| {
+    let inscriptions = envelopes.into_iter()
+        .enumerate()
+        .filter_map(move |(idx, envelope)| {
         Some(Inscription {
-            id: format!("{}i{}", tx.txid, envelope.offset),
-            // inscribed_by: owner.into(),
-            // owned_by: owner.into(),
-            // time: block.time,
-            // height: block.height,
-            // offset: envelope.offset,
+            id: format!("{}i{}", tx.txid, idx),
             content_type: envelope.payload.content_type().map(|s| s.to_string()),
-            // content_length: envelope.payload.content_length().unwrap_or_default() as u32,
+            content_length: envelope.payload.content_length().map(|s| s.to_string()).unwrap_or("0".into()),
             pointer: envelope.payload.pointer().map(|ptr| ptr as i64),
             parent: envelope.payload.parent().map(|parent| parent.to_string()),
             metadata: envelope.payload.metadata.clone().map(|metadata| match String::from_utf8(metadata.clone()) {

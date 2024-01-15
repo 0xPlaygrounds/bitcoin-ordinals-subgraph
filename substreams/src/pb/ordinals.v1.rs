@@ -74,21 +74,19 @@ pub struct Inscription {
     /// first ordinal of its inputs
     #[prost(int64, optional, tag="3")]
     pub pointer: ::core::option::Option<i64>,
-    /// Note: Not implemented
     #[prost(string, optional, tag="4")]
     pub parent: ::core::option::Option<::prost::alloc::string::String>,
-    /// Note: Not implemented
     #[prost(string, optional, tag="5")]
     pub metadata: ::core::option::Option<::prost::alloc::string::String>,
-    /// Note: Not implemented
     #[prost(string, optional, tag="6")]
     pub metaprotocol: ::core::option::Option<::prost::alloc::string::String>,
-    /// Note: Not implemented
     #[prost(string, optional, tag="7")]
     pub content_encoding: ::core::option::Option<::prost::alloc::string::String>,
     /// Content of the inscription
     #[prost(string, tag="8")]
     pub content: ::prost::alloc::string::String,
+    #[prost(string, tag="9")]
+    pub content_length: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

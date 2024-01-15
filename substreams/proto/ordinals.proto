@@ -53,16 +53,13 @@ message Inscription {
     // Optional pointer if the inscription is not for the 
     // first ordinal of its inputs
     optional int64 pointer = 3;
-    // Note: Not implemented
     optional string parent = 4;
-    // Note: Not implemented
     optional string metadata = 5;
-    // Note: Not implemented
     optional string metaprotocol = 6;
-    // Note: Not implemented
     optional string content_encoding = 7;
     // Content of the inscription
     string content = 8;
+    string content_length = 9;
 }
 
 message Inscriptions {
