@@ -25,9 +25,9 @@ pub struct Transaction {
     pub amount: i64,
     /// Fee in sats
     /// int64 fee = 4;
-    /// Ordinals assignment (only present for coinbase transaction)
-    #[prost(message, optional, tag="4")]
-    pub assignment: ::core::option::Option<OrdinalsBlockAssignment>,
+    /// Assignment of newly minted sats (only present for coinbase transaction)
+    #[prost(message, repeated, tag="4")]
+    pub assignments: ::prost::alloc::vec::Vec<OrdinalsBlockAssignment>,
     /// Input UTXOs
     #[prost(string, repeated, tag="5")]
     pub input_utxos: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
