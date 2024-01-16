@@ -45,6 +45,16 @@ function loadUTXOs(ids: string[]): Utxo[] {
   return utxos
 }
 
+function loadInscriptions(utxos: Utxo[]): Inscription[] {
+  let inscriptions: Inscription[] = []
+
+  for (let i = 0; i < utxos.length; ++i) {
+    inscriptions = inscriptions.concat(utxos[i].inscriptions.load())
+  }
+
+  return inscriptions
+}
+
 function getNthSatUtxo(utxos: Utxo[], n: i64): Utxo {
   let total: i64 = 0
   let idx = 0;
@@ -71,7 +81,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Handle inscriptions
-  let inscriptions: Inscription[] = []
+  let inscriptions: Inscription[] = loadInscriptions(input_utxos)
   for (let insc = 0; insc < transaction.inscriptions.length; ++insc) {
     let inscription = new Inscription(transaction.inscriptions[insc].id)
     inscription.content_type = transaction.inscriptions[insc].contentType
@@ -85,7 +95,6 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
     inscription.genesisAddress = transaction.relativeAssignments[0].address
     inscription.ordinal = input_ordinals.getNthOrdinal(transaction.inscriptions[insc].pointer)
     inscription.genesisUtxo = getNthSatUtxo(input_utxos, transaction.inscriptions[insc].pointer).id
-    inscription.location = inscription.genesisUtxo
     inscriptions.push(inscription)
   }
 
@@ -97,12 +106,16 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
     utxo.unspent = true
     utxo.transaction = transaction.txid
 
+    
+    let utxo_ordinals = input_ordinals.popNOrdinals(transaction.relativeAssignments[i].size)
     // Assign inscriptions to UTXO
     for(let j = 0; j < inscriptions.length; ++j) {
-
+      if (utxo_ordinals.contains(inscriptions[j].ordinal)) {
+        inscriptions[j].location = utxo.id
+        inscriptions[j].locationOffset = utxo_ordinals.offsetOf(inscriptions[j].ordinal)
+        inscriptions[j].save()
+      }
     }
-
-    let utxo_ordinals = input_ordinals.popNOrdinals(transaction.relativeAssignments[i].size)
     utxo.ordinalsSlug = utxo_ordinals.serialize()
     utxo.save()
   }
