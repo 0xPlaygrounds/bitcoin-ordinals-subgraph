@@ -84,7 +84,12 @@ export class OrdinalSet {
     }
 
     contains(ordinal: BigInt): bool {
-        return this.blocks.some((block) => block.contains(ordinal))
+        for (let i = 0; i < this.blocks.length; ++i) {
+            if (this.blocks[i].contains(ordinal)) {
+                return true
+            }
+        }
+        return false
     }
 
     offsetOf(ordinal: BigInt): BigInt {
