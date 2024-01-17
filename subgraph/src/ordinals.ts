@@ -53,6 +53,10 @@ export class OrdinalSet {
     }
 
     popNOrdinals(n: i64): OrdinalSet {
+        if (n == 0) {
+            return new OrdinalSet([])
+        }
+        
         let total: i64 = 0
         let blocks: OrdinalBlock[] = []
     

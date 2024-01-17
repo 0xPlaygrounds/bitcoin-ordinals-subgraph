@@ -30,6 +30,9 @@ export class Inscription {
 
     writer.uint32(66);
     writer.string(message.content);
+
+    writer.uint32(74);
+    writer.string(message.contentLength);
   }
 
   static decode(reader: Reader, length: i32): Inscription {
@@ -71,6 +74,10 @@ export class Inscription {
           message.content = reader.string();
           break;
 
+        case 9:
+          message.contentLength = reader.string();
+          break;
+
         default:
           reader.skipType(tag & 7);
           break;
@@ -88,6 +95,7 @@ export class Inscription {
   metaprotocol: string;
   contentEncoding: string;
   content: string;
+  contentLength: string;
 
   constructor(
     id: string = "",
@@ -97,7 +105,8 @@ export class Inscription {
     metadata: string = "",
     metaprotocol: string = "",
     contentEncoding: string = "",
-    content: string = ""
+    content: string = "",
+    contentLength: string = ""
   ) {
     this.id = id;
     this.contentType = contentType;
@@ -107,5 +116,6 @@ export class Inscription {
     this.metaprotocol = metaprotocol;
     this.contentEncoding = contentEncoding;
     this.content = content;
+    this.contentLength = contentLength;
   }
 }

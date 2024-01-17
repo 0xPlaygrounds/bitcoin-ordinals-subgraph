@@ -1,8 +1,5 @@
 import { BigInt, Bytes, log } from '@graphprotocol/graph-ts';
 import { Block as ProtoBlock } from "./pb/ordinals/v1/Block"
-import { Ordinals } from './pb/ordinals/v1/Ordinals';
-import { OrdinalsAssignment as ProtoOrdinalsAssignment } from './pb/ordinals/v1/OrdinalsAssignment';
-import { OrdinalsTransfers as ProtoOrdinalsTransfers } from './pb/ordinals/v1/OrdinalsTransfers';
 import { Block, Inscription, Transaction, Utxo, UtxoLoader } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
@@ -140,19 +137,25 @@ function handleCoinbaseTransaction(
   transaction: ProtoTransaction,
   fees_ordinals: OrdinalSet,
 ): void {
+  log.debug("Processing coinbase transaction {}", [transaction.txid])
+  
   let coinbase_ordinals: OrdinalSet = new OrdinalSet([]);
   coinbase_ordinals.append_block(new OrdinalBlock(
-    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).start),
-    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
+    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignments[0]).start),
+    BigInt.fromI64(transaction.amount)
   ))
   coinbase_ordinals.append_set(fees_ordinals)
 
-  let utxo = new Utxo((<OrdinalsBlockAssignment>transaction.assignment).utxo)
-  utxo.amount = BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
-  utxo.unspent = true
-  utxo.transaction = transaction.txid
-  utxo.ordinalsSlug = coinbase_ordinals.serialize()
-  utxo.save()
+  for (let i = 0; i < transaction.assignments.length; ++i) {
+    let utxo = new Utxo(transaction.assignments[i].utxo)
+    utxo.amount = BigInt.fromI64(transaction.assignments[i].size)
+    utxo.unspent = true
+    utxo.transaction = transaction.txid
+
+    let utxo_ordinals = coinbase_ordinals.popNOrdinals(transaction.assignments[i].size)
+    utxo.ordinalsSlug = utxo_ordinals.serialize()
+    utxo.save()
+  }
 
   let transaction_ = new Transaction(transaction.txid)
   transaction_.idx = BigInt.fromI64(transaction.idx)
