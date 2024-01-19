@@ -2,8 +2,7 @@ type Utxo @entity {
   id: ID!
   address: String
   amount: BigInt!
-  # ordinals: [OrdinalsAssignment!]! @derivedFrom(field: "utxo")
-  ordinalsSlug: String!
+  ordinalsSlug: Bytes!
   unspent: Boolean!
 
   transaction: Transaction!

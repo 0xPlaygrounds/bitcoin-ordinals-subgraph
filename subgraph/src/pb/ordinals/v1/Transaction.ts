@@ -4,7 +4,7 @@
 //   protoc        v4.25.1
 
 import { Writer, Reader } from "as-proto/assembly";
-import { OrdinalsBlockAssignment } from "./OrdinalsBlockAssignment";
+import { OrdinalBlock } from "./OrdinalBlock";
 import { Inscription } from "./Inscription";
 
 export class Transaction {
@@ -13,16 +13,16 @@ export class Transaction {
     writer.string(message.txid);
 
     writer.uint32(16);
-    writer.int64(message.idx);
+    writer.uint64(message.idx);
 
     writer.uint32(24);
-    writer.int64(message.amount);
+    writer.uint64(message.amount);
 
-    const assignments = message.assignments;
-    for (let i: i32 = 0; i < assignments.length; ++i) {
+    const coinbaseOrdinals = message.coinbaseOrdinals;
+    for (let i: i32 = 0; i < coinbaseOrdinals.length; ++i) {
       writer.uint32(34);
       writer.fork();
-      OrdinalsBlockAssignment.encode(assignments[i], writer);
+      OrdinalBlock.encode(coinbaseOrdinals[i], writer);
       writer.ldelim();
     }
 
@@ -34,11 +34,11 @@ export class Transaction {
       }
     }
 
-    const relativeAssignments = message.relativeAssignments;
-    for (let i: i32 = 0; i < relativeAssignments.length; ++i) {
+    const relativeOrdinals = message.relativeOrdinals;
+    for (let i: i32 = 0; i < relativeOrdinals.length; ++i) {
       writer.uint32(50);
       writer.fork();
-      OrdinalsBlockAssignment.encode(relativeAssignments[i], writer);
+      OrdinalBlock.encode(relativeOrdinals[i], writer);
       writer.ldelim();
     }
 
@@ -63,16 +63,16 @@ export class Transaction {
           break;
 
         case 2:
-          message.idx = reader.int64();
+          message.idx = reader.uint64();
           break;
 
         case 3:
-          message.amount = reader.int64();
+          message.amount = reader.uint64();
           break;
 
         case 4:
-          message.assignments.push(
-            OrdinalsBlockAssignment.decode(reader, reader.uint32())
+          message.coinbaseOrdinals.push(
+            OrdinalBlock.decode(reader, reader.uint32())
           );
           break;
 
@@ -81,8 +81,8 @@ export class Transaction {
           break;
 
         case 6:
-          message.relativeAssignments.push(
-            OrdinalsBlockAssignment.decode(reader, reader.uint32())
+          message.relativeOrdinals.push(
+            OrdinalBlock.decode(reader, reader.uint32())
           );
           break;
 
@@ -102,28 +102,28 @@ export class Transaction {
   }
 
   txid: string;
-  idx: i64;
-  amount: i64;
-  assignments: Array<OrdinalsBlockAssignment>;
+  idx: u64;
+  amount: u64;
+  coinbaseOrdinals: Array<OrdinalBlock>;
   inputUtxos: Array<string>;
-  relativeAssignments: Array<OrdinalsBlockAssignment>;
+  relativeOrdinals: Array<OrdinalBlock>;
   inscriptions: Array<Inscription>;
 
   constructor(
     txid: string = "",
-    idx: i64 = 0,
-    amount: i64 = 0,
-    assignments: Array<OrdinalsBlockAssignment> = [],
+    idx: u64 = 0,
+    amount: u64 = 0,
+    coinbaseOrdinals: Array<OrdinalBlock> = [],
     inputUtxos: Array<string> = [],
-    relativeAssignments: Array<OrdinalsBlockAssignment> = [],
+    relativeOrdinals: Array<OrdinalBlock> = [],
     inscriptions: Array<Inscription> = []
   ) {
     this.txid = txid;
     this.idx = idx;
     this.amount = amount;
-    this.assignments = assignments;
+    this.coinbaseOrdinals = coinbaseOrdinals;
     this.inputUtxos = inputUtxos;
-    this.relativeAssignments = relativeAssignments;
+    this.relativeOrdinals = relativeOrdinals;
     this.inscriptions = inscriptions;
   }
 }

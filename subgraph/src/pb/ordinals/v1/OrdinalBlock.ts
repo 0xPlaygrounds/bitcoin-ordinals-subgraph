@@ -5,8 +5,8 @@
 
 import { Writer, Reader } from "as-proto/assembly";
 
-export class OrdinalsBlockAssignment {
-  static encode(message: OrdinalsBlockAssignment, writer: Writer): void {
+export class OrdinalBlock {
+  static encode(message: OrdinalBlock, writer: Writer): void {
     writer.uint32(10);
     writer.string(message.utxo);
 
@@ -14,15 +14,15 @@ export class OrdinalsBlockAssignment {
     writer.string(message.address);
 
     writer.uint32(24);
-    writer.int64(message.start);
+    writer.uint64(message.start);
 
     writer.uint32(32);
-    writer.int64(message.size);
+    writer.uint64(message.size);
   }
 
-  static decode(reader: Reader, length: i32): OrdinalsBlockAssignment {
+  static decode(reader: Reader, length: i32): OrdinalBlock {
     const end: usize = length < 0 ? reader.end : reader.ptr + length;
-    const message = new OrdinalsBlockAssignment();
+    const message = new OrdinalBlock();
 
     while (reader.ptr < end) {
       const tag = reader.uint32();
@@ -36,11 +36,11 @@ export class OrdinalsBlockAssignment {
           break;
 
         case 3:
-          message.start = reader.int64();
+          message.start = reader.uint64();
           break;
 
         case 4:
-          message.size = reader.int64();
+          message.size = reader.uint64();
           break;
 
         default:
@@ -54,14 +54,14 @@ export class OrdinalsBlockAssignment {
 
   utxo: string;
   address: string;
-  start: i64;
-  size: i64;
+  start: u64;
+  size: u64;
 
   constructor(
     utxo: string = "",
     address: string = "",
-    start: i64 = 0,
-    size: i64 = 0
+    start: u64 = 0,
+    size: u64 = 0
   ) {
     this.utxo = utxo;
     this.address = address;

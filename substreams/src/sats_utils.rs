@@ -1,14 +1,14 @@
-pub fn btc_to_sats(btc_amount: f64) -> i64 {
+pub fn btc_to_sats(btc_amount: f64) -> u64 {
     let s = format!("{:.8}", btc_amount);
-    s.replace(".", "").parse::<i64>().unwrap()
+    s.replace(".", "").parse::<u64>().unwrap()
 }
 
 // From https://github.com/ordinals/ord/blob/master/bip.mediawiki
-pub fn subsidy(height: i64) -> i64 {
+pub fn subsidy(height: u64) -> u64 {
     50 * 100_000_000 >> (height / 210_000)
 }
 
-pub fn block_supply(height: i64) -> i64 {
+pub fn block_supply(height: u64) -> u64 {
     let mut supply = 0;
         
     for i in 0.. {

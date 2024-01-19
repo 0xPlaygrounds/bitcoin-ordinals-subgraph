@@ -12,6 +12,6 @@
 
 substreams gui -e mainnet.btc.streamingfast.io:443 \
    substreams.yaml \
-   map_inscriptions \
-   --start-block 780309 \
-   --stop-block +100000
+   map_ordinals \
+   --start-block 168910 \
+   --stop-block +1
