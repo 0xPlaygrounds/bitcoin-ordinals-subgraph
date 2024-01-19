@@ -66,7 +66,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   log.debug("Processing regular transaction {}", [transaction.txid])
 
   // Load input UTXOs and ordinals
-  log.debug("Loading input UTXOs", [])
+  // log.debug("Loading input UTXOs", [])
   let input_utxos = loadUTXOs(transaction.inputUtxos)
   let input_ordinals: OrdinalSet = new OrdinalSet([])
   for (let i = 0; i < input_utxos.length; ++i) {
@@ -80,7 +80,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Handle inscriptions
-  log.debug("Loading inscriptions", [])
+  // log.debug("Loading inscriptions", [])
   let inscriptions: Inscription[] = loadInscriptions(input_utxos)
   for (let insc = 0; insc < transaction.inscriptions.length; ++insc) {
     let inscription = new Inscription(transaction.inscriptions[insc].id)
@@ -99,7 +99,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Assign ordinals to output UTXOs
-  log.debug("Assigning ordinals to output UTXOs", [])
+  // log.debug("Assigning ordinals to output UTXOs", [])
   for (let i = 0; i < transaction.relativeOrdinals.length; ++i) {
     let utxo = new Utxo(transaction.relativeOrdinals[i].utxo)
     utxo.address = transaction.relativeOrdinals[i].address
@@ -147,7 +147,7 @@ function handleCoinbaseTransaction(
   }
   coinbase_ordinals.append_set(fees_ordinals)
 
-  log.debug("Assigning ordinals to output UTXOs", [])
+  // log.debug("Assigning ordinals to output UTXOs", [])
   for (let i = 0; i < transaction.coinbaseOrdinals.length; ++i) {
     let utxo = new Utxo(transaction.coinbaseOrdinals[i].utxo)
     utxo.amount = BigInt.fromU64(transaction.coinbaseOrdinals[i].size)

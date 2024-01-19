@@ -119,11 +119,12 @@ export class OrdinalSet {
      */
     static deserialize(binaryData: Bytes): OrdinalSet {
         const dataView = new DataView(binaryData.buffer);
+        // log.debug("Deserializing OrdinalSet. Bytes: {}, length: {}", [binaryData.toHexString(), dataView.byteLength.toString()]);
         let blocks: OrdinalBlock[] = [];
 
-        for (let i = 0; i < dataView.byteLength; i += 8) {
-            const start = dataView.getUint64(i, true);
-            const size = dataView.getUint64(i + 4, true);
+        for (let i = 0; i * 16 < dataView.byteLength; i++) {
+            const start = dataView.getUint64(i * 16, true);
+            const size = dataView.getUint64(i * 16 + 8, true);
             blocks.push(new OrdinalBlock(start, size));
         }
 
@@ -144,7 +145,12 @@ export class OrdinalSet {
             view.setUint64(i * 16, block.start, true);
             view.setUint64(i * 16 + 8, block.size, true);
         }
-
+        // log.debug("Serializing OrdinalSet. Blocks: {}, Bytes: {}", [
+        //     this.blocks.map<String>((block) => {
+        //         return `(${block.start}, ${block.size})`;
+        //     }).join(', '),
+        //     bytes.toHexString(),
+        // ])
         return bytes;
     }
 }
