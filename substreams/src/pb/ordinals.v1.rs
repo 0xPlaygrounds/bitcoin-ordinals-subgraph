@@ -2,15 +2,15 @@
 /// Represents a continuous block of ordinals assigned to a given UTXO
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OrdinalsBlockAssignment {
+pub struct OrdinalBlock {
     #[prost(string, tag="1")]
     pub utxo: ::prost::alloc::string::String,
     #[prost(string, optional, tag="2")]
     pub address: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(int64, tag="3")]
-    pub start: i64,
-    #[prost(int64, tag="4")]
-    pub size: i64,
+    #[prost(uint64, tag="3")]
+    pub start: u64,
+    #[prost(uint64, tag="4")]
+    pub size: u64,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -18,16 +18,16 @@ pub struct Transaction {
     #[prost(string, tag="1")]
     pub txid: ::prost::alloc::string::String,
     /// Output number
-    #[prost(int64, tag="2")]
-    pub idx: i64,
+    #[prost(uint64, tag="2")]
+    pub idx: u64,
     /// Amount transferred in sats
-    #[prost(int64, tag="3")]
-    pub amount: i64,
+    #[prost(uint64, tag="3")]
+    pub amount: u64,
     /// Fee in sats
     /// int64 fee = 4;
-    /// Assignment of newly minted sats (only present for coinbase transaction)
+    /// Ordinals assignment (only present for coinbase transaction)
     #[prost(message, repeated, tag="4")]
-    pub assignments: ::prost::alloc::vec::Vec<OrdinalsBlockAssignment>,
+    pub coinbase_ordinals: ::prost::alloc::vec::Vec<OrdinalBlock>,
     /// Input UTXOs
     #[prost(string, repeated, tag="5")]
     pub input_utxos: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -36,7 +36,7 @@ pub struct Transaction {
     /// E.g.: The Nth to Mth ordinals of the input utxos should
     /// be assigned to some output utxo
     #[prost(message, repeated, tag="6")]
-    pub relative_assignments: ::prost::alloc::vec::Vec<OrdinalsBlockAssignment>,
+    pub relative_ordinals: ::prost::alloc::vec::Vec<OrdinalBlock>,
     #[prost(message, repeated, tag="7")]
     pub inscriptions: ::prost::alloc::vec::Vec<Inscription>,
 }
@@ -44,20 +44,20 @@ pub struct Transaction {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Block {
     /// Block timestamp
-    #[prost(int64, tag="1")]
-    pub timestamp: i64,
+    #[prost(uint64, tag="1")]
+    pub timestamp: u64,
     /// Block number
-    #[prost(int64, tag="2")]
-    pub number: i64,
+    #[prost(uint64, tag="2")]
+    pub number: u64,
     /// Total miner reward (in sats)
-    #[prost(int64, tag="3")]
-    pub miner_reward: i64,
+    #[prost(uint64, tag="3")]
+    pub miner_reward: u64,
     /// Block subsidy (in sats)
-    #[prost(int64, tag="4")]
-    pub subsidy: i64,
+    #[prost(uint64, tag="4")]
+    pub subsidy: u64,
     /// Miner fees (in sats)
-    #[prost(int64, tag="5")]
-    pub fees: i64,
+    #[prost(uint64, tag="5")]
+    pub fees: u64,
     /// Block transactions
     #[prost(message, repeated, tag="6")]
     pub txs: ::prost::alloc::vec::Vec<Transaction>,

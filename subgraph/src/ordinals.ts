@@ -1,32 +1,32 @@
-import { BigInt, log } from '@graphprotocol/graph-ts';
+import { BigInt, Bytes, log } from '@graphprotocol/graph-ts';
 
 /**
  * Represents a block of continuous ordinals assigned to a given UTXO
  */
 export class OrdinalBlock {
-    start: BigInt;
-    size: BigInt;
+    start: u64;
+    size: u64;
    
-    constructor(start: BigInt, size: BigInt) {
+    constructor(start: u64, size: u64) {
         this.start = start;
         this.size = size;
     }
 
-    popNOrdinals(n: i64): OrdinalBlock {
-        let num_assigned = n <= this.size.toI64() ? BigInt.fromI64(n) : this.size;
+    popNOrdinals(n: u64): OrdinalBlock {
+        let num_assigned = n <= this.size ? n : this.size;
 
         let block = new OrdinalBlock(this.start, num_assigned);
-        this.start = this.start.plus(num_assigned)
-        this.size = this.start.minus(num_assigned)
+        this.start = this.start + num_assigned
+        this.size = this.start - num_assigned
         return block
     }
 
-    contains(ordinal: BigInt): bool {
-        return ordinal.ge(this.start) && ordinal.lt(this.start.plus(this.size))
+    contains(ordinal: u64): bool {
+        return ordinal >= this.start && ordinal < this.start + this.size
     }
 
-    offsetOf(ordinal: BigInt): BigInt {
-        return ordinal.minus(this.start)
+    offsetOf(ordinal: u64): u64 {
+        return ordinal - this.start
     }
 }
 
@@ -52,12 +52,12 @@ export class OrdinalSet {
         this.blocks = this.blocks.concat(other.blocks)
     }
 
-    popNOrdinals(n: i64): OrdinalSet {
+    popNOrdinals(n: u64): OrdinalSet {
         if (n == 0) {
             return new OrdinalSet([])
         }
         
-        let total: i64 = 0
+        let total: u64 = 0
         let blocks: OrdinalBlock[] = []
     
         let idx = this.blocks.length - 1;
@@ -65,9 +65,9 @@ export class OrdinalSet {
         while (total < n) {
             let new_block = current_block.popNOrdinals(n - total)
             blocks.push(new_block)
-            total += new_block.size.toI64()
+            total += new_block.size
     
-            if (current_block.size == BigInt.zero()) {
+            if (current_block.size == 0) {
                 this.blocks.pop()
                 idx -= 1
             }
@@ -76,18 +76,18 @@ export class OrdinalSet {
         return new OrdinalSet(blocks)
     }
 
-    getNthOrdinal(n: i64): BigInt {
-        let total: i64 = 0
+    getNthOrdinal(n: u64): u64 {
+        let total: u64 = 0
         let idx = 0;
         while (total < n) {
-            total += this.blocks[idx].size.toI64()
+            total += this.blocks[idx].size
             idx += 1
         }
     
-        return this.blocks[idx - 1].start.plus(BigInt.fromI64(n - total))
+        return this.blocks[idx - 1].start + n - total
     }
 
-    contains(ordinal: BigInt): bool {
+    contains(ordinal: u64): bool {
         for (let i = 0; i < this.blocks.length; ++i) {
             if (this.blocks[i].contains(ordinal)) {
                 return true
@@ -96,60 +96,55 @@ export class OrdinalSet {
         return false
     }
 
-    offsetOf(ordinal: BigInt): BigInt {
+    offsetOf(ordinal: u64): u64 {
         for (let i = 0; i < this.blocks.length; ++i) {
             if (this.blocks[i].contains(ordinal)) {
                 return this.blocks[i].offsetOf(ordinal)
             }
         }
 
-        return BigInt.fromI32(-1)
+        return -1
     }
 
     /**
-     * Deserializes a string representing ordinal blocks into an array of OrdinalsBlock objects.
+     * Deserializes binary data into an OrdinalSet object.
      * 
-     * The input string should have the format "START0:SIZE0;START1:SIZE1;..." where each
-     * pair of start and size values defines an ordinal range. This function splits the
-     * string by semicolons to separate different ranges and then by colons to isolate 
-     * start and size values within each range. Each pair of start and size values is used 
-     * to create an OrdinalsBlock object, which is added to the resulting array.
+     * This function takes an ArrayBuffer containing binary data and converts it into
+     * an OrdinalSet object. It reads the binary data in chunks of 8 bytes, where each
+     * chunk represents an OrdinalBlock with a start and size. It creates a new OrdinalBlock
+     * object for each chunk and adds it to the blocks array.
      * 
-     * @param blocks A string representing ordinal blocks, formatted as "START:SIZE;START:SIZE;..."
-     * @returns An OrdinalsSet object containing the deserialized ordinal blocks.
+     * @param binaryData The binary data to deserialize.
+     * @returns An OrdinalSet object representing the deserialized data.
      */
-    static deserialize(blocks: string): OrdinalSet {
-        let result: OrdinalBlock[] = [];
-        let rangePairs: string[] = blocks.split(';');
-        if (rangePairs.length == 0) {
-            rangePairs = [blocks];
-        };
-        for (let i = 0; i < rangePairs.length; i++) {
-            let parts: string[] = rangePairs[i].split(':');
-            if (parts.length != 2) continue;
-    
-            let start = BigInt.fromString(parts[0]);
-            let size = BigInt.fromString(parts[1]);
-            result.push(new OrdinalBlock(start, size));
+    static deserialize(binaryData: Bytes): OrdinalSet {
+        const dataView = new DataView(binaryData.buffer);
+        let blocks: OrdinalBlock[] = [];
+
+        for (let i = 0; i < dataView.byteLength; i += 8) {
+            const start = dataView.getUint64(i, true);
+            const size = dataView.getUint64(i + 4, true);
+            blocks.push(new OrdinalBlock(start, size));
         }
 
-        return new OrdinalSet(result);
+        return new OrdinalSet(blocks);
     }
 
     /**
-     * Serializes an OrdinalSet object into a string.
-     * 
-     * This function converts each OrdinalBlock object in the given set into a string
-     * in the format "START:SIZE". It then concatenates these strings, separating them 
-     * with semicolons, to form a single string representation of the array of ranges.
-     * 
-     * @returns A string representing the serialized ranges, formatted as "START:SIZE;START:SIZE;..."
+     * Serializes the OrdinalSet into binary format.
+     * Each OrdinalBlock is represented as a pair of 64-bit integers (start and size).
+     * @returns {ArrayBuffer} The serialized OrdinalSet.
      */
-    serialize(): string {
-        let parts: string[] = new Array<string>(this.blocks.length);
+    serialize(): Bytes {
+        const bytes = new Bytes(this.blocks.length * 16); // 16 bytes for each block (2 * 64-bit)
+        const view = new DataView(bytes.buffer);
+
         for (let i = 0; i < this.blocks.length; i++) {
-            parts[i] = this.blocks[i].start.toString() + ":" + this.blocks[i].size.toString();
+            const block = this.blocks[i];
+            view.setUint64(i * 16, block.start, true);
+            view.setUint64(i * 16 + 8, block.size, true);
         }
-        return parts.join(';');
+
+        return bytes;
     }
 }

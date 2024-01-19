@@ -9,19 +9,19 @@ import { Transaction } from "./Transaction";
 export class Block {
   static encode(message: Block, writer: Writer): void {
     writer.uint32(8);
-    writer.int64(message.timestamp);
+    writer.uint64(message.timestamp);
 
     writer.uint32(16);
-    writer.int64(message.number);
+    writer.uint64(message.number);
 
     writer.uint32(24);
-    writer.int64(message.minerReward);
+    writer.uint64(message.minerReward);
 
     writer.uint32(32);
-    writer.int64(message.subsidy);
+    writer.uint64(message.subsidy);
 
     writer.uint32(40);
-    writer.int64(message.fees);
+    writer.uint64(message.fees);
 
     const txs = message.txs;
     for (let i: i32 = 0; i < txs.length; ++i) {
@@ -40,23 +40,23 @@ export class Block {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.timestamp = reader.int64();
+          message.timestamp = reader.uint64();
           break;
 
         case 2:
-          message.number = reader.int64();
+          message.number = reader.uint64();
           break;
 
         case 3:
-          message.minerReward = reader.int64();
+          message.minerReward = reader.uint64();
           break;
 
         case 4:
-          message.subsidy = reader.int64();
+          message.subsidy = reader.uint64();
           break;
 
         case 5:
-          message.fees = reader.int64();
+          message.fees = reader.uint64();
           break;
 
         case 6:
@@ -72,19 +72,19 @@ export class Block {
     return message;
   }
 
-  timestamp: i64;
-  number: i64;
-  minerReward: i64;
-  subsidy: i64;
-  fees: i64;
+  timestamp: u64;
+  number: u64;
+  minerReward: u64;
+  subsidy: u64;
+  fees: u64;
   txs: Array<Transaction>;
 
   constructor(
-    timestamp: i64 = 0,
-    number: i64 = 0,
-    minerReward: i64 = 0,
-    subsidy: i64 = 0,
-    fees: i64 = 0,
+    timestamp: u64 = 0,
+    number: u64 = 0,
+    minerReward: u64 = 0,
+    subsidy: u64 = 0,
+    fees: u64 = 0,
     txs: Array<Transaction> = []
   ) {
     this.timestamp = timestamp;

@@ -13,7 +13,7 @@ use anyhow::Result;
 use sats_utils::{btc_to_sats, subsidy, block_supply};
 
 impl btc::Transaction {
-    pub fn amount(&self) -> i64 {
+    pub fn amount(&self) -> u64 {
         self.vout.iter()
             .map(|vout| btc_to_sats(vout.value))
             .sum()
@@ -24,9 +24,9 @@ impl btc::Transaction {
 fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::errors::Error> {
     // Total supply of sats before the block is mined
     let total_supply = if block.height == 0 {0} else {
-        block_supply(block.height - 1)
+        block_supply((block.height - 1) as u64)
     };
-    let block_subsidy = subsidy(block.height);
+    let block_subsidy = subsidy(block.height as u64);
 
     // First ordinal of the block subsidy
     let first_ordinal = total_supply;
@@ -37,9 +37,9 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
         txid: raw_coinbase_tx.txid.clone(),
         idx: 0,
         amount: raw_coinbase_tx.amount(),
-        assignments: raw_coinbase_tx.vout.iter()
+        coinbase_ordinals: raw_coinbase_tx.vout.iter()
             .fold((first_ordinal, vec![]), |(counter, mut rel_ass), vout| {
-                rel_ass.push(ord_proto::OrdinalsBlockAssignment {
+                rel_ass.push(ord_proto::OrdinalBlock {
                     utxo: raw_coinbase_tx.txid.clone() + ":" + &vout.n.to_string(),
                     address: address_from_scriptpubkey(&vout.script_pub_key.as_ref().unwrap().hex),
                     start: counter,
@@ -48,7 +48,7 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
                 (counter + btc_to_sats(vout.value), rel_ass)
             }).1,
         input_utxos: vec![],
-        relative_assignments: vec![],
+        relative_ordinals: vec![],
         // Might not be necessary, could set to empty vec
         inscriptions: match parse_inscriptions(raw_coinbase_tx.clone()) {
             Ok(inscriptions) => inscriptions,
@@ -63,16 +63,16 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
     let mut transactions = block.tx[1..].iter().enumerate().map(|(idx, tx)| {
         ord_proto::Transaction {
             txid: tx.txid.clone(),
-            idx: (idx + 1) as i64,
+            idx: (idx + 1) as u64,
             amount: tx.amount(),
             // fee: 
-            assignments: vec![],
+            coinbase_ordinals: vec![],
             input_utxos: tx.vin.iter()
                 .map(|vin| vin.txid.clone() + ":" + &vin.vout.to_string())
                 .collect(),
-            relative_assignments: tx.vout.iter()
+            relative_ordinals: tx.vout.iter()
                 .fold((0, vec![]), |(counter, mut rel_ass), vout| {
-                    rel_ass.push(ord_proto::OrdinalsBlockAssignment {
+                    rel_ass.push(ord_proto::OrdinalBlock {
                         utxo: tx.txid.clone() + ":" + &vout.n.to_string(),
                         address: address_from_scriptpubkey(&vout.script_pub_key.as_ref().unwrap().hex),
                         start: counter,
@@ -94,10 +94,10 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
     let mut all_txs = vec![coinbase_tx];
     all_txs.append(&mut transactions);
     let block = ord_proto::Block {
-        number: block.height,
-        timestamp: block.time,
+        number: block.height as u64,
+        timestamp: block.time as u64,
         miner_reward: all_txs[0].amount.clone(),
-        subsidy: block_subsidy,
+        subsidy: block_subsidy as u64,
         fees: all_txs[0].amount - block_subsidy,
         txs: all_txs,
     };
