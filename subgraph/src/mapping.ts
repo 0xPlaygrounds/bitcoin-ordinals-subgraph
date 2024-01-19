@@ -7,7 +7,7 @@ import { Block, Inscription, Transaction, Utxo } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
 import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
-import { OrdinalBlock, deserialize, getNthOrdinal, popNOrdinals, serialize } from './ordinals'
+import { OrdinalBlock, OrdinalSet } from './ordinals'
 
 export function handleBlock(blockBytes: Uint8Array): void {
   const block = Protobuf.decode<ProtoBlock>(blockBytes, ProtoBlock.decode);
@@ -22,9 +22,9 @@ export function handleBlock(blockBytes: Uint8Array): void {
   block_.fees = BigInt.fromI64(block.fees)
   block_.save()
 
-  let fees_ordinals: OrdinalBlock[] = []
+  let fees_ordinals = new OrdinalSet([]);
   for (let i = 1; i < block.txs.length; ++i) {
-    fees_ordinals = fees_ordinals.concat(handleRegularTransaction(block_, block.txs[i]))
+    fees_ordinals.append_set(handleRegularTransaction(block_, block.txs[i]))
   }
 
   handleCoinbaseTransaction(block_, block.txs[0], fees_ordinals)
@@ -45,6 +45,16 @@ function loadUTXOs(ids: string[]): Utxo[] {
   return utxos
 }
 
+function loadInscriptions(utxos: Utxo[]): Inscription[] {
+  let inscriptions: Inscription[] = []
+
+  for (let i = 0; i < utxos.length; ++i) {
+    inscriptions = inscriptions.concat(utxos[i].inscriptions.load())
+  }
+
+  return inscriptions
+}
+
 function getNthSatUtxo(utxos: Utxo[], n: i64): Utxo {
   let total: i64 = 0
   let idx = 0;
@@ -56,13 +66,13 @@ function getNthSatUtxo(utxos: Utxo[], n: i64): Utxo {
   return utxos[idx - 1]
 }
 
-function handleRegularTransaction(block: Block, transaction: ProtoTransaction): OrdinalBlock[] {
+function handleRegularTransaction(block: Block, transaction: ProtoTransaction): OrdinalSet {
   // Load input UTXOs and ordinals
   let input_utxos = loadUTXOs(transaction.inputUtxos)
-  let input_ordinals: OrdinalBlock[] = []
+  let input_ordinals: OrdinalSet = new OrdinalSet([])
   for (let i = 0; i < input_utxos.length; ++i) {
-    let blocks = deserialize(input_utxos[i].ordinalsSlug)
-    input_ordinals = input_ordinals.concat(blocks)
+    let blocks = OrdinalSet.deserialize(input_utxos[i].ordinalsSlug)
+    input_ordinals.append_set(blocks)
 
     // Mark UTXO as spent
     input_utxos[i].unspent = false
@@ -71,21 +81,21 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Handle inscriptions
+  let inscriptions: Inscription[] = loadInscriptions(input_utxos)
   for (let insc = 0; insc < transaction.inscriptions.length; ++insc) {
     let inscription = new Inscription(transaction.inscriptions[insc].id)
     inscription.content_type = transaction.inscriptions[insc].contentType
-    // inscription.pointer = BigInt.fromI64(transaction.inscriptions[insc].pointer)
+    inscription.offset = BigInt.fromI64(transaction.inscriptions[insc].pointer)
     inscription.parent = transaction.inscriptions[insc].parent
     inscription.metadata = transaction.inscriptions[insc].metadata
     inscription.metaprotocol = transaction.inscriptions[insc].metaprotocol
     inscription.contentEncoding = transaction.inscriptions[insc].contentEncoding
     inscription.content = transaction.inscriptions[insc].content
-    // inscription.ordinals = input_ordinals[0].id
     inscription.genesisTransaction = transaction.txid
     inscription.genesisAddress = transaction.relativeAssignments[0].address
-    inscription.ordinal = getNthOrdinal(input_ordinals, transaction.inscriptions[insc].pointer)
-    inscription.utxo = getNthSatUtxo(input_utxos, transaction.inscriptions[insc].pointer).id
-    inscription.save()
+    inscription.ordinal = input_ordinals.getNthOrdinal(transaction.inscriptions[insc].pointer)
+    inscription.genesisUtxo = getNthSatUtxo(input_utxos, transaction.inscriptions[insc].pointer).id
+    inscriptions.push(inscription)
   }
 
   // Assign ordinals to output UTXOs
@@ -96,8 +106,17 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
     utxo.unspent = true
     utxo.transaction = transaction.txid
 
-    let utxo_ordinals = popNOrdinals(input_ordinals, transaction.relativeAssignments[i].size)
-    utxo.ordinalsSlug = serialize(utxo_ordinals)
+    
+    let utxo_ordinals = input_ordinals.popNOrdinals(transaction.relativeAssignments[i].size)
+    // Assign inscriptions to UTXO
+    for(let j = 0; j < inscriptions.length; ++j) {
+      if (utxo_ordinals.contains(inscriptions[j].ordinal)) {
+        inscriptions[j].location = utxo.id
+        inscriptions[j].locationOffset = utxo_ordinals.offsetOf(inscriptions[j].ordinal)
+        inscriptions[j].save()
+      }
+    }
+    utxo.ordinalsSlug = utxo_ordinals.serialize()
     utxo.save()
   }
 
@@ -114,20 +133,20 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
 function handleCoinbaseTransaction(
   block: Block,
   transaction: ProtoTransaction,
-  fees_ordinals: OrdinalBlock[],
+  fees_ordinals: OrdinalSet,
 ): void {
-  let coinbase_ordinals: OrdinalBlock[] = []
-  coinbase_ordinals.push(new OrdinalBlock(
+  let coinbase_ordinals: OrdinalSet = new OrdinalSet([]);
+  coinbase_ordinals.append_block(new OrdinalBlock(
     BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).start),
     BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
   ))
-  coinbase_ordinals = coinbase_ordinals.concat(fees_ordinals)
+  coinbase_ordinals.append_set(fees_ordinals)
 
   let utxo = new Utxo((<OrdinalsBlockAssignment>transaction.assignment).utxo)
   utxo.amount = BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
   utxo.unspent = true
   utxo.transaction = transaction.txid
-  utxo.ordinalsSlug = serialize(coinbase_ordinals)
+  utxo.ordinalsSlug = coinbase_ordinals.serialize()
   utxo.save()
 
   let transaction_ = new Transaction(transaction.txid)

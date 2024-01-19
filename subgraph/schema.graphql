@@ -9,7 +9,7 @@ type Utxo @entity {
   transaction: Transaction!
   spentIn: Transaction
 
-  inscriptions: [Inscription!]! @derivedFrom(field: "utxo")
+  inscriptions: [Inscription!]! @derivedFrom(field: "location")
 }
 
 type Inscription @entity {
@@ -20,12 +20,20 @@ type Inscription @entity {
   metaprotocol: String
   contentEncoding: String
   content: String!
+  contentLength: BigInt!
+  offset: BigInt!
 
-  genesisTransaction: Transaction!
   genesisAddress: String!
+  genesisTransaction: Transaction!
+  genesisUtxo: Utxo!
+  genesisOffset: BigInt!
 
   ordinal: BigInt!
-  utxo: Utxo!
+
+  # UTXO in which the inscription is currently held
+  location: Utxo!
+  # Offset of the inscription in the current UTXO in which it is held
+  locationOffset: BigInt!
 }
 
 type Transaction @entity {

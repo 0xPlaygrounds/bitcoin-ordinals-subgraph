@@ -20,79 +20,132 @@ export class OrdinalBlock {
         this.size = this.start.minus(num_assigned)
         return block
     }
+
+    contains(ordinal: BigInt): bool {
+        return ordinal.ge(this.start) && ordinal.lt(this.start.plus(this.size))
+    }
+
+    offsetOf(ordinal: BigInt): BigInt {
+        return ordinal.minus(this.start)
+    }
 }
 
-export function popNOrdinals(ordinal_blocks: OrdinalBlock[], n: i64): OrdinalBlock[] {
-    let total: i64 = 0
-    let blocks: OrdinalBlock[] = []
+/**
+ * Represents a set of OrdinalBlock objects.
+ */
+export class OrdinalSet {
+    blocks: OrdinalBlock[];
 
-    let idx = ordinal_blocks.length - 1;
-    let current_block = ordinal_blocks[idx]
-    while (total < n) {
-        let new_block = current_block.popNOrdinals(n - total)
-        blocks.push(new_block)
-        total += new_block.size.toI64()
+    constructor(blocks: OrdinalBlock[]) {
+        this.blocks = blocks;
+    }
 
-        if (current_block.size == BigInt.zero()) {
-            ordinal_blocks.pop()
-            idx -= 1
+    append_block(block: OrdinalBlock): void {
+        this.blocks.push(block)
+    }
+
+    append_blocks(blocks: OrdinalBlock[]): void {
+        this.blocks = this.blocks.concat(blocks)
+    }
+
+    append_set(other: OrdinalSet): void {
+        this.blocks = this.blocks.concat(other.blocks)
+    }
+
+    popNOrdinals(n: i64): OrdinalSet {
+        let total: i64 = 0
+        let blocks: OrdinalBlock[] = []
+    
+        let idx = this.blocks.length - 1;
+        let current_block = this.blocks[idx]
+        while (total < n) {
+            let new_block = current_block.popNOrdinals(n - total)
+            blocks.push(new_block)
+            total += new_block.size.toI64()
+    
+            if (current_block.size == BigInt.zero()) {
+                this.blocks.pop()
+                idx -= 1
+            }
         }
+    
+        return new OrdinalSet(blocks)
     }
 
-    return blocks
-}
-
-export function getNthOrdinal(ordinal_blocks: OrdinalBlock[], n: i64): BigInt {
-    let total: i64 = 0
-    let idx = 0;
-    while (total < n) {
-        total += ordinal_blocks[idx].size.toI64()
-        idx += 1
+    getNthOrdinal(n: i64): BigInt {
+        let total: i64 = 0
+        let idx = 0;
+        while (total < n) {
+            total += this.blocks[idx].size.toI64()
+            idx += 1
+        }
+    
+        return this.blocks[idx - 1].start.plus(BigInt.fromI64(n - total))
     }
 
-    return ordinal_blocks[idx - 1].start.plus(BigInt.fromI64(n - total))
-}
-
-/**
- * Deserializes a string representing ordinal blocks into an array of OrdinalsBlock objects.
- * 
- * The input string should have the format "START0:SIZE0;START1:SIZE1;..." where each
- * pair of start and size values defines an ordinal range. This function splits the
- * string by semicolons to separate different ranges and then by colons to isolate 
- * start and size values within each range. Each pair of start and size values is used 
- * to create an OrdinalsBlock object, which is added to the resulting array.
- * 
- * @param blocks A string representing ordinal blocks, formatted as "START:SIZE;START:SIZE;..."
- * @returns An array of OrdinalsBlock objects, each representing a block parsed from the input string.
- */
-export function deserialize(blocks: string): OrdinalBlock[] {
-    let result: OrdinalBlock[] = [];
-    let rangePairs: string[] = blocks.split(';');
-    for (let i = 0; i < rangePairs.length; i++) {
-        let parts: string[] = rangePairs[i].split(':');
-        if (parts.length != 2) continue;
-
-        let start = BigInt.fromString(parts[0]);
-        let size = BigInt.fromString(parts[1]);
-        result.push(new OrdinalBlock(start, size));
+    contains(ordinal: BigInt): bool {
+        for (let i = 0; i < this.blocks.length; ++i) {
+            if (this.blocks[i].contains(ordinal)) {
+                return true
+            }
+        }
+        return false
     }
-    return result;
-}
 
-/**
- * Serializes an array of OrdinalsRange objects into a string.
- * 
- * This function converts each OrdinalsRange object in the given array into a string
- * in the format "START:SIZE". It then concatenates these strings, separating them 
- * with semicolons, to form a single string representation of the array of ranges.
- * 
- * @param ranges An array of OrdinalsRange objects to be serialized.
- * @returns A string representing the serialized ranges, formatted as "START:SIZE;START:SIZE;..."
- */
-export function serialize(ranges: OrdinalBlock[]): string {
-    let parts: string[] = new Array<string>(ranges.length);
-    for (let i = 0; i < ranges.length; i++) {
-        parts[i] = ranges[i].start.toString() + ":" + ranges[i].size.toString();
+    offsetOf(ordinal: BigInt): BigInt {
+        for (let i = 0; i < this.blocks.length; ++i) {
+            if (this.blocks[i].contains(ordinal)) {
+                return this.blocks[i].offsetOf(ordinal)
+            }
+        }
+
+        return BigInt.fromI32(-1)
     }
-    return parts.join(';');
+
+    /**
+     * Deserializes a string representing ordinal blocks into an array of OrdinalsBlock objects.
+     * 
+     * The input string should have the format "START0:SIZE0;START1:SIZE1;..." where each
+     * pair of start and size values defines an ordinal range. This function splits the
+     * string by semicolons to separate different ranges and then by colons to isolate 
+     * start and size values within each range. Each pair of start and size values is used 
+     * to create an OrdinalsBlock object, which is added to the resulting array.
+     * 
+     * @param blocks A string representing ordinal blocks, formatted as "START:SIZE;START:SIZE;..."
+     * @returns An OrdinalsSet object containing the deserialized ordinal blocks.
+     */
+    static deserialize(blocks: string): OrdinalSet {
+        let result: OrdinalBlock[] = [];
+        let rangePairs: string[] = blocks.split(';');
+        if (rangePairs.length == 0) {
+            rangePairs = [blocks];
+        };
+        for (let i = 0; i < rangePairs.length; i++) {
+            let parts: string[] = rangePairs[i].split(':');
+            if (parts.length != 2) continue;
+    
+            let start = BigInt.fromString(parts[0]);
+            let size = BigInt.fromString(parts[1]);
+            result.push(new OrdinalBlock(start, size));
+        }
+
+        return new OrdinalSet(result);
+    }
+
+    /**
+     * Serializes an OrdinalSet object into a string.
+     * 
+     * This function converts each OrdinalBlock object in the given set into a string
+     * in the format "START:SIZE". It then concatenates these strings, separating them 
+     * with semicolons, to form a single string representation of the array of ranges.
+     * 
+     * @returns A string representing the serialized ranges, formatted as "START:SIZE;START:SIZE;..."
+     */
+    serialize(): string {
+        let parts: string[] = new Array<string>(this.blocks.length);
+        for (let i = 0; i < this.blocks.length; i++) {
+            parts[i] = this.blocks[i].start.toString() + ":" + this.blocks[i].size.toString();
+        }
+        return parts.join(';');
+    }
 }
