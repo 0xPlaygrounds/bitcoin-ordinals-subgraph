@@ -1,9 +1,6 @@
 import { BigInt, Bytes, log } from '@graphprotocol/graph-ts';
 import { Block as ProtoBlock } from "./pb/ordinals/v1/Block"
-import { Ordinals } from './pb/ordinals/v1/Ordinals';
-import { OrdinalsAssignment as ProtoOrdinalsAssignment } from './pb/ordinals/v1/OrdinalsAssignment';
-import { OrdinalsTransfers as ProtoOrdinalsTransfers } from './pb/ordinals/v1/OrdinalsTransfers';
-import { Block, Inscription, Transaction, Utxo } from '../generated/schema';
+import { Block, Inscription, Transaction, Utxo, UtxoLoader } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
 import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
@@ -67,7 +64,10 @@ function getNthSatUtxo(utxos: Utxo[], n: i64): Utxo {
 }
 
 function handleRegularTransaction(block: Block, transaction: ProtoTransaction): OrdinalSet {
+  log.debug("Processing regular transaction {}", [transaction.txid])
+
   // Load input UTXOs and ordinals
+  log.debug("Loading input UTXOs", [])
   let input_utxos = loadUTXOs(transaction.inputUtxos)
   let input_ordinals: OrdinalSet = new OrdinalSet([])
   for (let i = 0; i < input_utxos.length; ++i) {
@@ -81,6 +81,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Handle inscriptions
+  log.debug("Loading inscriptions", [])
   let inscriptions: Inscription[] = loadInscriptions(input_utxos)
   for (let insc = 0; insc < transaction.inscriptions.length; ++insc) {
     let inscription = new Inscription(transaction.inscriptions[insc].id)
@@ -99,13 +100,13 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
   }
 
   // Assign ordinals to output UTXOs
+  log.debug("Assigning ordinals to output UTXOs", [])
   for (let i = 0; i < transaction.relativeAssignments.length; ++i) {
     let utxo = new Utxo(transaction.relativeAssignments[i].utxo)
     utxo.address = transaction.relativeAssignments[i].address
     utxo.amount = BigInt.fromI64(transaction.relativeAssignments[i].size)
     utxo.unspent = true
     utxo.transaction = transaction.txid
-
     
     let utxo_ordinals = input_ordinals.popNOrdinals(transaction.relativeAssignments[i].size)
     // Assign inscriptions to UTXO
@@ -120,6 +121,7 @@ function handleRegularTransaction(block: Block, transaction: ProtoTransaction): 
     utxo.save()
   }
 
+  // Create transaction
   let transaction_ = new Transaction(transaction.txid)
   transaction_.idx = BigInt.fromI64(transaction.idx)
   transaction_.amount = BigInt.fromI64(transaction.amount)
@@ -135,19 +137,25 @@ function handleCoinbaseTransaction(
   transaction: ProtoTransaction,
   fees_ordinals: OrdinalSet,
 ): void {
+  log.debug("Processing coinbase transaction {}", [transaction.txid])
+  
   let coinbase_ordinals: OrdinalSet = new OrdinalSet([]);
   coinbase_ordinals.append_block(new OrdinalBlock(
-    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).start),
-    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
+    BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignments[0]).start),
+    BigInt.fromI64(transaction.amount)
   ))
   coinbase_ordinals.append_set(fees_ordinals)
 
-  let utxo = new Utxo((<OrdinalsBlockAssignment>transaction.assignment).utxo)
-  utxo.amount = BigInt.fromI64((<OrdinalsBlockAssignment>transaction.assignment).size)
-  utxo.unspent = true
-  utxo.transaction = transaction.txid
-  utxo.ordinalsSlug = coinbase_ordinals.serialize()
-  utxo.save()
+  for (let i = 0; i < transaction.assignments.length; ++i) {
+    let utxo = new Utxo(transaction.assignments[i].utxo)
+    utxo.amount = BigInt.fromI64(transaction.assignments[i].size)
+    utxo.unspent = true
+    utxo.transaction = transaction.txid
+
+    let utxo_ordinals = coinbase_ordinals.popNOrdinals(transaction.assignments[i].size)
+    utxo.ordinalsSlug = utxo_ordinals.serialize()
+    utxo.save()
+  }
 
   let transaction_ = new Transaction(transaction.txid)
   transaction_.idx = BigInt.fromI64(transaction.idx)

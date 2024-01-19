@@ -18,11 +18,11 @@ export class Transaction {
     writer.uint32(24);
     writer.int64(message.amount);
 
-    const assignment = message.assignment;
-    if (assignment !== null) {
+    const assignments = message.assignments;
+    for (let i: i32 = 0; i < assignments.length; ++i) {
       writer.uint32(34);
       writer.fork();
-      OrdinalsBlockAssignment.encode(assignment, writer);
+      OrdinalsBlockAssignment.encode(assignments[i], writer);
       writer.ldelim();
     }
 
@@ -71,9 +71,8 @@ export class Transaction {
           break;
 
         case 4:
-          message.assignment = OrdinalsBlockAssignment.decode(
-            reader,
-            reader.uint32()
+          message.assignments.push(
+            OrdinalsBlockAssignment.decode(reader, reader.uint32())
           );
           break;
 
@@ -105,7 +104,7 @@ export class Transaction {
   txid: string;
   idx: i64;
   amount: i64;
-  assignment: OrdinalsBlockAssignment | null;
+  assignments: Array<OrdinalsBlockAssignment>;
   inputUtxos: Array<string>;
   relativeAssignments: Array<OrdinalsBlockAssignment>;
   inscriptions: Array<Inscription>;
@@ -114,7 +113,7 @@ export class Transaction {
     txid: string = "",
     idx: i64 = 0,
     amount: i64 = 0,
-    assignment: OrdinalsBlockAssignment | null = null,
+    assignments: Array<OrdinalsBlockAssignment> = [],
     inputUtxos: Array<string> = [],
     relativeAssignments: Array<OrdinalsBlockAssignment> = [],
     inscriptions: Array<Inscription> = []
@@ -122,7 +121,7 @@ export class Transaction {
     this.txid = txid;
     this.idx = idx;
     this.amount = amount;
-    this.assignment = assignment;
+    this.assignments = assignments;
     this.inputUtxos = inputUtxos;
     this.relativeAssignments = relativeAssignments;
     this.inscriptions = inscriptions;

@@ -37,12 +37,16 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
         txid: raw_coinbase_tx.txid.clone(),
         idx: 0,
         amount: raw_coinbase_tx.amount(),
-        assignment: Some(ord_proto::OrdinalsBlockAssignment {
-            utxo: raw_coinbase_tx.txid.clone() + ":0",
-            address: address_from_scriptpubkey(&raw_coinbase_tx.vout[0].script_pub_key.as_ref().unwrap().hex),
-            start: first_ordinal,
-            size: block_subsidy,
-        }),
+        assignments: raw_coinbase_tx.vout.iter()
+            .fold((first_ordinal, vec![]), |(counter, mut rel_ass), vout| {
+                rel_ass.push(ord_proto::OrdinalsBlockAssignment {
+                    utxo: raw_coinbase_tx.txid.clone() + ":" + &vout.n.to_string(),
+                    address: address_from_scriptpubkey(&vout.script_pub_key.as_ref().unwrap().hex),
+                    start: counter,
+                    size: btc_to_sats(vout.value),
+                });
+                (counter + btc_to_sats(vout.value), rel_ass)
+            }).1,
         input_utxos: vec![],
         relative_assignments: vec![],
         // Might not be necessary, could set to empty vec
@@ -62,7 +66,7 @@ fn map_ordinals(block: btc::Block) -> Result<ord_proto::Block, substreams::error
             idx: (idx + 1) as i64,
             amount: tx.amount(),
             // fee: 
-            assignment: None,
+            assignments: vec![],
             input_utxos: tx.vin.iter()
                 .map(|vin| vin.txid.clone() + ":" + &vin.vout.to_string())
                 .collect(),

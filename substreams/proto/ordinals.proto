@@ -18,8 +18,8 @@ message Transaction {
     int64 amount = 3;
     // Fee in sats
     // int64 fee = 4;
-    // Ordinals assignment (only present for coinbase transaction)
-    optional OrdinalsBlockAssignment assignment = 4;
+    // Assignment of newly minted sats (only present for coinbase transaction)
+    repeated OrdinalsBlockAssignment assignments = 4;
     // Input UTXOs
     repeated string input_utxos = 5;
     // Note: The ordinals blocks here are relative and refer to the
