@@ -3,7 +3,6 @@ import { Block as ProtoBlock } from "./pb/ordinals/v1/Block"
 import { Block, Inscription, Transaction, Utxo } from '../generated/schema';
 import { Protobuf } from 'as-proto/assembly';
 import { Transaction as ProtoTransaction } from './pb/ordinals/v1/Transaction';
-import { OrdinalsBlockAssignment } from './pb/ordinals/v1/OrdinalsBlockAssignment';
 import { OrdinalBlock, OrdinalSet } from './ordinals'
 
 export function handleBlock(blockBytes: Uint8Array): void {
