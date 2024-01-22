@@ -9,7 +9,6 @@
     "create-local": "graph create --node http://localhost:8020/ bitcoin-ordinals",
     "remove-local": "graph remove --node http://localhost:8020/ bitcoin-ordinals",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 bitcoin-ordinals",
-    "deploy-aws": "graph deploy --node http://ec2-52-86-173-61.compute-1.amazonaws.com:8020/ --ipfs http://ec2-52-86-173-61.compute-1.amazonaws.com:5001 bitcoin-ordinals",
     "test": "graph test"
   },
   "dependencies": {
